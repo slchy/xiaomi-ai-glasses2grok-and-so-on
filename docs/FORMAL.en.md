@@ -60,6 +60,7 @@ Bursts of length at most 16, and errors of odd bit count, are not tested in this
 
 Each loop iteration advances at least 1 byte, or stops when fewer than 8 bytes remain.
 A tail shorter than 8 bytes is not counted in `dropped`. For `A5 A5 00`, `dropped` is 0.
+A tail that matches magic but whose declared length runs past the buffer is not counted in `dropped` either.
 
 ### F7 A bad CRC does not emit the original frame
 
@@ -119,8 +120,8 @@ The default mps is 64512. After negotiation this device uses mps = 32768. An ove
 
 ```
 582 = 12 + 10 × 57
-the first byte of each 57-byte frame is AD
-the 12-byte header is fixed: 00 02 02 42 00 02 00 00 00 00 02 3A
+only dialog-audio DATA with MassType 2 and [6:10] = 0 has this shape
+a length of 582 does not separate audio from images
 ```
 
 ### I1 id and field number

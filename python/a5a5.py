@@ -77,7 +77,6 @@ def parse(data: bytes):
         crc_field = int.from_bytes(data[i + 6 : i + 8], "little")
         total = HDR_LEN + length
         if i + total > n:
-            dropped += n - i
             break
         payload = data[i + HDR_LEN : i + total]
         if crc16_arc(payload) != crc_field:
@@ -163,3 +162,46 @@ def voice_payload_ok(payload: bytes) -> bool:
     if len(body) != MSBC_FRAMES_PER_PACKET * MSBC_FRAME_LEN:
         return False
     return all(body[i] == MSBC_SYNC for i in range(0, len(body), MSBC_FRAME_LEN))
+
+
+MASS_CMD_START = 1
+MASS_CMD_DATA = 2
+MASS_CMD_END = 3
+MASS_CMD_QUIT = 4
+
+
+def parse_mass(data: bytes) -> dict:
+    """channel 3 明文。多字节字段为大端。"""
+    if len(data) < 2:
+        raise ValueError("MASS 太短: %d" % len(data))
+    out = {"reserved": data[0], "command": data[1]}
+    if data[1] in (MASS_CMD_END, MASS_CMD_QUIT):
+        return out
+    if data[1] == MASS_CMD_START:
+        if len(data) < 5:
+            raise ValueError("START 太短: %d" % len(data))
+        out["param"] = data[4]
+        return out
+    if data[1] != MASS_CMD_DATA:
+        return out
+    if len(data) < 12:
+        raise ValueError("DATA 太短: %d" % len(data))
+    out["mass_type"] = int.from_bytes(data[4:6], "big")
+    out["total_len"] = int.from_bytes(data[6:10], "big")
+    out["chunk_len"] = int.from_bytes(data[10:12], "big")
+    out["data"] = data[12:]
+    return out
+
+
+DOWNLINK_HEADER_LEN = 22
+
+
+def downlink_header(data_type: int, sub_type: int, digest: bytes, payload_len: int) -> bytes:
+    """手机发往眼镜的 MASS 头。22 字节，小端。与上行的 12 字节大端头不是同一布局。"""
+    if not 0 <= data_type <= 15 or not 0 <= sub_type <= 15:
+        raise ValueError("type/subType 须在 0..15")
+    if len(digest) != 16:
+        raise ValueError("摘要须为 16 字节")
+    if payload_len < 0:
+        raise ValueError("长度不能为负")
+    return bytes([0, (data_type << 4) | sub_type]) + digest + payload_len.to_bytes(4, "little")

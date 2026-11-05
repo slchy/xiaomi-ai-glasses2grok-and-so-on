@@ -128,6 +128,37 @@ def test_mass_voice_packet_layout():
     assert not a5a5.voice_payload_ok(bytes(broken))
 
 
+def test_mass_header_fields():
+    end = a5a5.parse_mass(b"\x00\x03")
+    assert end["command"] == a5a5.MASS_CMD_END
+    start = a5a5.parse_mass(b"\x00\x01\x00\x01\xc8")
+    assert start["command"] == a5a5.MASS_CMD_START and start["param"] == 0xC8
+    voice = a5a5.parse_mass(a5a5.VOICE_HEADER)
+    assert voice["command"] == a5a5.MASS_CMD_DATA
+    assert voice["mass_type"] == 2 and voice["total_len"] == 0 and voice["chunk_len"] == 570
+    image = bytearray(a5a5.VOICE_HEADER)
+    image[4:6] = (3).to_bytes(2, "big")
+    image[6:10] = (1000).to_bytes(4, "big")
+    parsed = a5a5.parse_mass(bytes(image))
+    assert parsed["mass_type"] == 3 and parsed["total_len"] == 1000
+    assert len(a5a5.VOICE_HEADER) == 12
+
+
+def test_incomplete_frame_is_not_dropped():
+    header = b"\xa5\xa5\x03\x00" + (100).to_bytes(2, "little") + b"\x00\x00"
+    frames, bad, resync, dropped = a5a5.parse(header)
+    assert frames == [] and (bad, resync, dropped) == (0, 0, 0)
+
+
+def test_downlink_header_is_little_endian():
+    digest = bytes(range(16))
+    header = a5a5.downlink_header(1, 2, digest, 0x01020304)
+    assert len(header) == 22
+    assert header[0] == 0 and header[1] == 0x12
+    assert header[2:18] == digest
+    assert header[18:22] == (0x01020304).to_bytes(4, "little")
+
+
 def _run() -> int:
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_")]
     failed = []

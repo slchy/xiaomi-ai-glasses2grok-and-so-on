@@ -14,3 +14,5 @@ frames, bad_crc, resync, dropped = parse(frame)
 ```
 
 调用时把 `python/` 放进 `PYTHONPATH`。
+
+许可：[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)。

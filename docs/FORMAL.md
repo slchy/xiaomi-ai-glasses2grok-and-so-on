@@ -1,5 +1,7 @@
 # 形式化规格 — A5A5 帧
 
+[English](FORMAL.en.md)
+
 记 `L₁(p, t, s) = build(payload=p, ftype=t, seq=s)`，
 `P₁(b) = parse(b)` 返回 `(frames, bad_crc, resync, dropped)`。
 `𝔹` 为字节，`|x|` 为长度。
@@ -56,7 +58,7 @@
 ```
 
 循环每次至少前进 1 字节，或在剩余长度不足 8 时结束。
-不足 8 字节的尾部不计入 `dropped`。例如 `A5 A5 00` 的 `dropped = 0`。
+不足 8 字节的尾部不计入 `dropped`。例如 `A5 A5 00` 的 `dropped` 是 0。
 
 ### F7 错误的 CRC 不产出原帧
 
@@ -111,3 +113,15 @@ l2_fits(n, mps) ⟺ n + 2 ≤ mps
 ```
 
 默认 mps = 64512。这台设备协商后的 mps = 32768。超限不拆帧。
+
+### V1 MASS_VOICE 包长
+
+```
+582 = 12 + 10 × 57
+每个 57 字节帧的首字节是 AD
+12 字节头固定为 00 02 02 42 00 02 00 00 00 00 02 3A
+```
+
+### I1 id 与字段号
+
+`WearPacket.id` 与 protobuf 字段号无公式。容器字段号仍是 `type + 2`。

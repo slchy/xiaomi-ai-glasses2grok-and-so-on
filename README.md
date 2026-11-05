@@ -1,6 +1,10 @@
 # miaiglasses2grokbot
 
-把小米 AI 眼镜接到自己的语音代理。麦克风和播放走系统蓝牙：HFP 采集，A2DP 播放。
+[English](README.en.md)
+
+把小米 AI 眼镜接到自己的语音代理。上行语音在 SPP 的 MASS_VOICE（channel 3），下行播放走 A2DP。HFP/SCO 已连接，但这条链路不用。
+
+本仓库目前仅公开 A5A5 帧协议实现，业务端代理位于私有实现。
 
 帧层协议见 [docs/a5a5.md](docs/a5a5.md)，已测性质见 [docs/FORMAL.md](docs/FORMAL.md)。实现在 `python/a5a5.py`。
 

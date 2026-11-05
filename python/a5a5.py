@@ -144,3 +144,22 @@ def wear_container(packet_type: int, body: bytes = b"") -> bytes:
 def l2_fits(body_len: int, mps: int = DEVICE_MPS) -> bool:
     """L2 头 2 字节加 body 不超过 MPS。超限不拆帧。"""
     return body_len + 2 <= mps
+
+
+VOICE_L2_CHANNEL = 3
+VOICE_PACKET_LEN = 582
+VOICE_HEADER_LEN = 12
+MSBC_FRAME_LEN = 57
+MSBC_FRAMES_PER_PACKET = 10
+MSBC_SYNC = 0xAD
+VOICE_HEADER = bytes.fromhex("00020242000200000000023a")
+
+
+def voice_payload_ok(payload: bytes) -> bool:
+    """582 字节 MASS_VOICE 明文：12 字节头 + 10 个对齐的 mSBC 帧。"""
+    if len(payload) != VOICE_PACKET_LEN or payload[:VOICE_HEADER_LEN] != VOICE_HEADER:
+        return False
+    body = payload[VOICE_HEADER_LEN:]
+    if len(body) != MSBC_FRAMES_PER_PACKET * MSBC_FRAME_LEN:
+        return False
+    return all(body[i] == MSBC_SYNC for i in range(0, len(body), MSBC_FRAME_LEN))

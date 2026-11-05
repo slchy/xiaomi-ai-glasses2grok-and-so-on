@@ -1,4 +1,4 @@
-"""A5A5 帧的确定性检查。规格见 docs/a5a5.md、docs/FORMAL.md。
+"""A5A5 帧的确定性检查。规格见 docs/a5a5.md、docs/FORMAL.md；英文见 docs/a5a5.en.md、docs/FORMAL.en.md。
 
     python tests/test_frame.py
 """
@@ -116,6 +116,16 @@ def test_mps_is_a_hard_cap():
     assert not a5a5.l2_fits(64511, a5a5.DEFAULT_MPS)
     assert a5a5.DEVICE_TX_WINDOW == 3
     assert a5a5.LOCAL_TX_WINDOW == 32
+
+
+def test_mass_voice_packet_layout():
+    assert a5a5.VOICE_HEADER_LEN + a5a5.MSBC_FRAMES_PER_PACKET * a5a5.MSBC_FRAME_LEN == a5a5.VOICE_PACKET_LEN
+    body = bytes([a5a5.MSBC_SYNC]) + b"\x00" * (a5a5.MSBC_FRAME_LEN - 1)
+    payload = a5a5.VOICE_HEADER + body * a5a5.MSBC_FRAMES_PER_PACKET
+    assert a5a5.voice_payload_ok(payload)
+    broken = bytearray(payload)
+    broken[a5a5.VOICE_HEADER_LEN] = 0
+    assert not a5a5.voice_payload_ok(bytes(broken))
 
 
 def _run() -> int:

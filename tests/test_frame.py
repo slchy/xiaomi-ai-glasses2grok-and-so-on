@@ -93,6 +93,31 @@ def test_empty_ack_is_eight_zero_tail():
     assert a5a5.crc16_arc(b"") == 0
 
 
+def test_wear_tag_follows_type():
+    expect = {
+        1: b"\x1a",
+        2: b"\x22",
+        13: b"\x7a",
+        14: b"\x82\x01",
+        18: b"\xa2\x01",
+        20: b"\xb2\x01",
+        23: b"\xca\x01",
+    }
+    for packet_type, tag in expect.items():
+        assert a5a5.wear_tag(packet_type) == tag
+        assert a5a5.wear_container(packet_type) == tag + b"\x00"
+    assert a5a5.wear_tag(14) != a5a5.wear_tag(2)
+
+
+def test_mps_is_a_hard_cap():
+    assert a5a5.l2_fits(32766, a5a5.DEVICE_MPS)
+    assert not a5a5.l2_fits(32767, a5a5.DEVICE_MPS)
+    assert a5a5.l2_fits(64510, a5a5.DEFAULT_MPS)
+    assert not a5a5.l2_fits(64511, a5a5.DEFAULT_MPS)
+    assert a5a5.DEVICE_TX_WINDOW == 3
+    assert a5a5.LOCAL_TX_WINDOW == 32
+
+
 def _run() -> int:
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_")]
     failed = []

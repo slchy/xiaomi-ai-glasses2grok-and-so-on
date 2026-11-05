@@ -107,3 +107,40 @@ def l2_unpack(data: bytes):
     if len(data) < 2:
         raise ValueError("L2 太短: %d" % len(data))
     return data[0], data[1], data[2:]
+
+
+DEFAULT_MPS = 64512
+DEVICE_MPS = 32768
+LOCAL_TX_WINDOW = 32
+DEFAULT_REMOTE_TX_WINDOW = 4
+DEVICE_TX_WINDOW = 3
+
+
+def varint(value: int) -> bytes:
+    if value < 0:
+        raise ValueError("varint 不能为负")
+    out = bytearray()
+    while True:
+        byte = value & 0x7F
+        value >>= 7
+        if value:
+            out.append(byte | 0x80)
+        else:
+            out.append(byte)
+            return bytes(out)
+
+
+def wear_tag(packet_type: int) -> bytes:
+    """容器 tag。field = type + 2，wire type = 2。"""
+    if packet_type < 0:
+        raise ValueError("type 不能为负")
+    return varint(((packet_type + 2) << 3) | 2)
+
+
+def wear_container(packet_type: int, body: bytes = b"") -> bytes:
+    return wear_tag(packet_type) + varint(len(body)) + body
+
+
+def l2_fits(body_len: int, mps: int = DEVICE_MPS) -> bool:
+    """L2 头 2 字节加 body 不超过 MPS。超限不拆帧。"""
+    return body_len + 2 <= mps

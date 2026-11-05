@@ -93,3 +93,21 @@ l2_unpack(L₂(ch, op, p)) = (ch, op, p)
 ```
 
 `ch`、`op` 各是一个字节。`op = 2` 表示剩余字节是密文。算法不在本仓库。
+
+### W2 容器 tag
+
+```
+field = type + 2
+tag = varint((field << 3) | 2)
+wear_container(type, 空) = tag ‖ 00
+```
+
+type 2 的 tag 是 `22`。type 14 的 tag 是 `82 01`，不是 `22`。
+
+### M1 单帧上限
+
+```
+l2_fits(n, mps) ⟺ n + 2 ≤ mps
+```
+
+默认 mps = 64512。这台设备协商后的 mps = 32768。超限不拆帧。

@@ -1,4 +1,4 @@
-# miaiglasses2grokbot
+# xiaomi-ai-glasses2grok-and-so-on
 
 [中文](README.md)
 

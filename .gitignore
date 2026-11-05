@@ -1,0 +1,33 @@
+# 语言和工具
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.hypothesis/
+*.log
+
+# 密钥。这个目录里不该出现，出现了也不许进提交
+*.pem
+*.key
+*.der
+*.p12
+*.pfx
+.env
+.env.*
+
+# App / 固件二进制
+*.apk
+*.dex
+*.so
+*.bundle
+
+# 抓包
+captures/
+*.cfa
+*.pcap
+*.pcapng
+*.btsnoop
+*.hcidump
+
+# 界面导出
+_ui.xml

@@ -5,6 +5,7 @@
 `𝔹` 为字节，`|x|` 为长度。
 
 长度与 CRC 按小端解释。字段说明见 [a5a5.md](a5a5.md)。
+这里只写本仓库测试覆盖的性质。滑动窗口和重传见 `a5a5.md`，解析器不执行它们。
 
 ---
 
@@ -17,7 +18,7 @@
     |L₁(p,t,s)| = 8 + |p|
 ```
 
-8 字节头：magic(2) + type(1) + seq(1) + len(2) + crc16(2)。
+8 字节头：magic(2) + ctrl(1) + seq(1) + len(2) + crc16(2)。
 
 ### F2 往返
 
@@ -27,6 +28,8 @@
     该帧的 payload、type、seq、len 分别为 p、t、s、|p|
     bad_crc = resync = dropped = 0
 ```
+
+`type` 是完整的 ctrl 字节。
 
 ### F3 magic
 
@@ -44,8 +47,7 @@
     crc16_arc(p ⊕ e) ≠ crc16_arc(p)
 ```
 
-主规格还写了「长度不超过 16 的突发错误」和「奇数个比特错误」。
-公开测试没有覆盖这两条，这里不把它们写成已证。
+长度不超过 16 的突发错误、奇数个比特错误，本仓库没有测试，不记为已证。
 
 ### F5 解析总会返回
 
@@ -63,6 +65,23 @@
     P₁ 不产出 payload = p 且 len = |p| 的帧
 ```
 
+### F10 ctrl 半字节
+
+```
+pack_ctrl(type, frx) = (frx << 4) | type
+unpack_ctrl 取出低 4 位和 bit4
+type ∈ {0..15}, frx ∈ {0,1}
+```
+
+`build` 再 `parse` 之后，`unpack_ctrl(帧.type)` 还原这对值。
+
+### F11 空 payload 的 CRC
+
+```
+crc16_arc(空) = 0
+L₁(空, pack_ctrl(1, 0), s) = A5 A5 01 s 00 00 00 00
+```
+
 ---
 
 ## 2. L2 头
@@ -70,9 +89,7 @@
 ```
 L₂(ch, op, p) = bytes([ch, op]) ‖ p
 |L₂| = 2 + |p|
-parse 还原 (ch, op, p)
+l2_unpack(L₂(ch, op, p)) = (ch, op, p)
 ```
 
-`ch, op` 各是一个字节。本目录不规定 opcode 的加密语义。
-
----
+`ch`、`op` 各是一个字节。`op = 2` 表示剩余字节是密文。算法不在本仓库。

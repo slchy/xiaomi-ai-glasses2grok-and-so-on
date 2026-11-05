@@ -2,6 +2,8 @@
 
 把小米 AI 眼镜接到自己的语音代理。麦克风和播放走系统蓝牙：HFP 采集，A2DP 播放。
 
+帧层协议见 [docs/a5a5.md](docs/a5a5.md)，已测性质见 [docs/FORMAL.md](docs/FORMAL.md)。实现在 `python/a5a5.py`。
+
 ```bash
 python tests/test_frame.py
 ```

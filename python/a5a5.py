@@ -2,7 +2,7 @@
 
 布局（小端）:
     magic(2) = A5 A5
-    type(1)
+    ctrl(1)      低 4 位 type，bit4 = frx
     seq(1)
     len(2)       payload 长度
     crc16(2)     CRC-16/ARC(payload)
@@ -13,6 +13,23 @@ from __future__ import annotations
 
 MAGIC = b"\xa5\xa5"
 HDR_LEN = 8
+
+TYPE_NAK = 0
+TYPE_ACK = 1
+TYPE_CMD = 2
+TYPE_DATA = 3
+
+
+def pack_ctrl(l1_type: int, frx: int = 0) -> int:
+    """线字节 = (frx << 4) | type。type 占低 4 位，frx 只占 bit4。"""
+    if not 0 <= l1_type <= 0x0F or frx not in (0, 1):
+        raise ValueError("type 须在 0..15，frx 须为 0 或 1")
+    return (frx << 4) | l1_type
+
+
+def unpack_ctrl(byte: int) -> tuple[int, int]:
+    """返回 (type, frx)。bit5–7 不计入 frx。"""
+    return byte & 0x0F, (byte >> 4) & 1
 
 
 def crc16_arc(data: bytes) -> int:

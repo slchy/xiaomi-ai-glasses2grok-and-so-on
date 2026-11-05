@@ -77,6 +77,22 @@ def test_L2_roundtrip():
             assert a5a5.l2_unpack(packed) == (channel, opcode, payload)
 
 
+def test_ctrl_nibble_roundtrip():
+    assert a5a5.pack_ctrl(a5a5.TYPE_DATA, 0) == 3
+    assert a5a5.pack_ctrl(a5a5.TYPE_DATA, 1) == 0x13
+    assert a5a5.unpack_ctrl(0x13) == (a5a5.TYPE_DATA, 1)
+    frame = a5a5.build(b"x", a5a5.pack_ctrl(a5a5.TYPE_DATA, 1), 4)
+    frames, bad, resync, dropped = a5a5.parse(frame)
+    assert (bad, resync, dropped) == (0, 0, 0)
+    assert a5a5.unpack_ctrl(frames[0]["type"]) == (a5a5.TYPE_DATA, 1)
+
+
+def test_empty_ack_is_eight_zero_tail():
+    frame = a5a5.build(b"", a5a5.pack_ctrl(a5a5.TYPE_ACK, 0), 2)
+    assert frame == b"\xa5\xa5\x01\x02\x00\x00\x00\x00"
+    assert a5a5.crc16_arc(b"") == 0
+
+
 def _run() -> int:
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_")]
     failed = []

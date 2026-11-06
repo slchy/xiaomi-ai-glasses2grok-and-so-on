@@ -1,7 +1,7 @@
 # xiaomi-ai-glasses2grok-and-so-on
 
 [English](README.en.md)
-
+[演示视频](bilibili.com/video/BV1jn456gEeQ/)
 把小米 AI 眼镜接到自己的语音代理。本仓库目前仅公开 A5A5 帧协议实现，业务端代理位于私有实现。产品方案在文末。
 
 帧层协议见 [docs/a5a5.md](docs/a5a5.md)，已测性质见 [docs/FORMAL.md](docs/FORMAL.md)。实现在 `python/a5a5.py`。

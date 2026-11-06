@@ -27,53 +27,80 @@ Settled on 2026-11-05.
 
 Two decisions:
 
-1. Call each vendor's AI agent CLI directly. One generic invocation covers them.
-2. Pace the playback. Chinese speech rate moves between 3.4 and 4.8 characters per second with the backlog, and playback does not stop.
+1. Understanding goes through dsh over ACP. The harness does not host a second chat or vision model. The earlier generic CLI call is no longer on this path.
+2. The rate table is still a design. The running path submits each sentence to TTS at a fixed 1.0x and does not track supply.
 
 ### Architecture
 
 ```text
-glasses ⇄ SPP ⇄ phone (thin client) ⇄ WebSocket ⇄ cloud harness ⇄ AI agent CLI
-                                                  │
-                                          STT / TTS (external)
+glasses ⇄ SPP ⇄ phone (frame forwarding only) ⇄ raw TCP (5-byte header) ⇄ cloud harness
+                                                      │
+                         streaming ASR / Smart Turn / dsh / streaming TTS
 ```
 
-The cloud side only moves data and schedules work. Audio coding stays on the phone.
+The phone strips the SPP, SAR, and MASS headers and forwards mSBC unchanged. The cloud turns mSBC into PCM16 at 16 kHz. Downlink is PCM16 at 24 kHz, played with `AudioTrack` over A2DP. Uplink is 16 kHz and downlink is 24 kHz. The player uses 24 kHz. The two directions do not share one sample-rate constant.
+
+The phone and the cloud use raw TCP with a fixed 5-byte header:
+
+```text
+[0]    type    1 audio (uplink mSBC, downlink PCM16)
+               2 image (uplink JPEG, downlink a take_photo control)
+               3 wake context (transaction id and request id)
+[1:5]  length  u32 little-endian
+[5:]   payload
+```
+
+One frame is at most 32 MB. A bad length drops the whole receive buffer. A partial read has to be completed before the frame is parsed. Uplink writes go wake, then image, then speech.
 
 | Layer | Who | Work |
 |---|---|---|
-| Glasses | Unchanged | Wake word in firmware, mSBC, JPEG, SPP |
-| Phone app | To build | SPP and reliable delivery, session setup, MASS demux, mSBC, photo trigger, audio forwarding |
-| Cloud harness | To build (scripts) | Audio pipe, STT, CLI call, TTS, rate control |
+| Glasses | Unchanged | Wake word in firmware, mSBC, echo cancellation, JPEG, SPP |
+| Phone | To build | SPP and reliable delivery, MASS demux, frame forwarding, photo trigger, A2DP playback |
+| Cloud harness | To build | mSBC decode, energy gate, streaming recognition, end-of-turn, dsh, streaming TTS |
 
 Three flows.
 
 Dialog:
 
 ```text
-speech → glasses mic → mSBC → SPP channel 3 → phone decodes PCM16 at 16 kHz
-      → WebSocket → harness → STT → text → CLI → streaming text → TTS → PCM
-      → WebSocket → phone encodes mSBC → SPP channel 3 → glasses play it
+speech → glasses mic → mSBC → SPP channel 3 → phone strips only the MASS header
+      → TCP type 1 → cloud decodes PCM16 at 16 kHz → energy gate → streaming ASR
+      → Smart Turn → dsh → streaming text → streaming TTS (PCM16 at 24 kHz)
+      → TCP type 1 → phone AudioTrack → A2DP → glasses play it
 ```
+
+mSBC sent back on channel 3 is acknowledged and produces no sound. That channel carries uplink only. Playback is A2DP.
+
+The firmware cancels echo. During playback the residual is about −80 dBFS, and the estimated attenuation is at least 75 dB. Double-talk still works. The cloud does not run an echo canceller.
+
+End of turn is a semantic probability, not a fixed silence timer. A pause inside a sentence scored about 0.19. A finished utterance scored about 0.96 to 0.99. The recognizer does not treat silence as speech activity. With no speech the session has to be closed, or the gateway idle-timeouts.
 
 Photo question:
 
 ```text
-phone sends WearPacket type 14, id 4 → glasses take a photo
+dsh decides it needs a look → MCP tool take_photo
+→ TCP type 2 → phone sends WearPacket type 14, id 4
+→ reuse the transaction id and request id from this wake
 → MassType 3 then MassType 4 → phone joins them into a JPEG
-→ WebSocket upload → multimodal CLI → text → TTS → glasses
+→ TCP type 2 → the picture goes to dsh → text → TTS → A2DP
 ```
+
+The photo happens when the model decides it needs to see. A transaction id invented on the phone gets no image back.
 
 Wake:
 
 ```text
-say the wake word stored on the glasses → glasses start recording
-→ a wake event arrives on SPP → the phone starts forwarding audio
+say the wake word stored in firmware → glasses start recording
+→ WearPacket type 14, id 10 arrives on SPP
+→ the phone keeps the transaction id and request id and sends them as TCP type 3
+→ the phone starts forwarding audio
 ```
 
-The wake word lives in the glasses firmware. The phone receives the event.
+The wake word lives in firmware. The phone cannot change it. Recognition also transcribes that wake sentence, and the cloud drops it with a word list. It is not a turn. Only one SPP session exists at a time. A second connection fails.
 
 ### Pacing
+
+The table below is the design. It is not on the running path. The running path submits each sentence at a fixed 1.0x. Resuming the session is about 1.45 s and the first TTS chunk is about 0.75 s. Those two already add up to about 2.2 s, before the recognizer's tail and playout, which is above the 800 ms target.
 
 The rate follows how fast text arrives. Faster when text is ahead, slower when it is not, and playback keeps going.
 
@@ -195,7 +222,7 @@ Local interruption words are handled on the phone, with no cloud round trip:
 算了 / 取消 / 停止 / 别查了 / 不用了 / 停一下 / 等等
 ```
 
-A hit stops the current CLI and plays a confirmation immediately.
+A hit stops the current dsh process and plays a confirmation immediately.
 
 ### Playback priority
 
@@ -226,7 +253,7 @@ If an interruption arrives after a side effect has already happened, say what ha
 
 ```text
 Phone: SPP coding, local queue, A2DP playback, reconnect
-Cloud: task state machine, stored results, CLI calls, replay after reconnect
+Cloud: task state machine, stored results, dsh calls, replay after reconnect
 ```
 
 A task:
@@ -245,7 +272,7 @@ A task:
 }
 ```
 
-`cliSessionId` continues the same CLI session. `delivered` becomes true after the ack.
+`cliSessionId` continues the same dsh session. `delivered` becomes true after the ack.
 
 Reconnect:
 
@@ -263,12 +290,12 @@ Three rules:
 
 ### Concurrency
 
-One CLI process runs tasks one at a time, and it can be interrupted.
+One dsh process runs tasks one at a time, and it can be interrupted.
 
 | The user says | Meaning | Action |
 |---|---|---|
-| 「算了」「取消」 | Interrupt | Stop the CLI and play 「已取消」 |
-| 「好了吗」 | Status | Answer locally, and leave the CLI alone |
+| 「算了」「取消」 | Interrupt | Stop dsh and play 「已取消」 |
+| 「好了吗」 | Status | Answer locally, and leave dsh alone |
 | 「不，改成后天」 | Revision | Queue it next, with the current context |
 | 「顺便订个外卖」 | New task | Queue it next |
 
@@ -278,14 +305,13 @@ A task past 3 minutes plays 「有点久，我先停一下」 and stops. A queue
 
 | On the phone | On the cloud |
 |---|---|
-| SPP connect, reliable delivery, session setup | STT, model, TTS |
+| SPP connect, reliable delivery, session setup | mSBC decode, streaming recognition, dsh, streaming TTS |
 | MASS demux (speech, image, OCR) | Conversation context |
-| mSBC decode on the way up, encode on the way down | Rate control |
-| Photo trigger | Multi-device management |
-| Forward PCM over WebSocket | Application policy |
-| Local queue, A2DP playback, reconnect | Task state and stored results |
+| Strip headers and forward mSBC unchanged | Rate control (not built; the running path is fixed 1.0x) |
+| Trigger the photo with the ids from the wake | Multi-device management |
+| Play 24 kHz PCM over A2DP, reconnect | Task state and stored results |
 
-mSBC coding is the heavy work on the phone.
+The phone does not code mSBC. The cloud uses a standard mSBC decoder and produces 16 kHz PCM.
 
 Channel 3 carries more than one kind of payload. The plaintext MASS layout is in the frame document. Demux uses MassType. Length does not separate audio from images.
 
@@ -307,33 +333,23 @@ Four requirements:
 
 The joined image bytes are a JPEG.
 
-The photo command is WearPacket type 14, id 4. Id 9 is a different command. The image returns on channel 3 as MassType 3, then 4.
+The photo command is WearPacket type 14, id 4. Id 9 is a different command. The transaction id and the request id are the pair that arrived with this wake (type 14, id 10). The image returns on channel 3 as MassType 3, then 4. The first wake-audio payload can be far larger than 582 bytes. The length fields in the header are what count.
 
 Channel 1 carries service calls from the glasses, and the phone dispatches them. Payment, factory mode, and interconnection are outside this design.
 
 ### Cloud harness
 
-The model is an agent CLI already installed on the machine. It has to stream, and it has to continue the same session.
+Understanding goes through dsh over ACP. Streaming text is handed to TTS one sentence at a time. The earlier direct CLI calls are no longer on this path.
 
-| CLI | Streaming | Continue |
-|---|---|---|
-| Cursor CLI `agent` | `--output-format stream-json`, `--stream-partial-output` | `--continue` or `--resume`. `--mode ask` is available |
-| CodeBuddy | `--output-format stream-json`, `--include-partial-messages` | `-c` or `-r`. ACP is also available |
-
-Usual form:
-
-```bash
-agent -p --output-format stream-json --stream-partial-output \
-      --mode ask --continue "<this turn's user text>"
-```
+Recognition is a streaming service that emits text while audio is still arriving. One API that only accepts a whole utterance inline is not used for uplink. Synthesis is streaming PCM16 at 24 kHz.
 
 | Requirement | Why |
 |---|---|
-| Streaming output | Waiting for the full answer puts the first syllable at 5–15 s |
-| Continue the same session | Each turn needs the previous context |
-| Split on sentences | Rate changes per sentence |
+| Streaming recognition and streaming synthesis | Waiting for the whole answer puts the first syllable several seconds out |
+| Continue the same dsh session | Each turn needs the previous context |
+| Split on sentences | Later rate changes are per sentence. Every sentence is 1.0x for now |
 
-The harness runs on an existing small machine. Speech recognition and synthesis are external services. The agent CLI runs next to the harness.
+On a nearer site, three upstream first-byte times improved by 0.45 to 0.72 s. The first TTS chunk dropped from 2.2–2.9 s to 0.75–1.0 s.
 
 ### Checked, and not checked yet
 
@@ -342,34 +358,34 @@ Checked:
 | Item | Result |
 |---|---|
 | Frames, reliable delivery, L2 | Exchanged with this pair of glasses |
-| mSBC decode | Produced 16 kHz PCM |
-| Vision image | Joined bytes are a JPEG |
-| Photo command | type 14, id 4 |
-| Wake | A wake event arrives on SPP |
+| An SPP session opened by this client | It connects and completes the handshake when the official app is not holding the socket |
+| mSBC | The cloud decodes it to 16 kHz PCM. Sending mSBC back on channel 3 is acknowledged and silent |
+| Vision image | After reusing the ids from the wake, MassType 3 and 4 join into a JPEG whose length matches the declaration |
+| Wake | type 14, id 10. The transcribed wake sentence is dropped |
+| Live speech | Streaming recognition, semantic end-of-turn, dsh, streaming TTS, and sound over A2DP have completed one turn |
+| Firmware echo cancellation | Double-talk during playback still works |
 
 Not checked yet:
 
 | Item | What it blocks |
 |---|---|
-| An SPP session opened by this client itself | The whole path |
-| A new mSBC encoder | Audio sent back on SPP |
-| Sentence-sized streaming TTS, and per-sentence speed | The pacing |
-| First-token time of each CLI | The pacing |
+| Changing the rate from supply | The 800 ms target for the first syllable. The running path is still fixed 1.0x |
+| Whether more than the device window of 3 frames in flight causes a NAK | Bulk sends |
+| Whether the device send timeout is 10 s or the 6 s that once appeared in a log | That log is gone, so both numbers stay on record |
 
 ### Cost and latency
 
-The host is an existing machine. Model cost follows that CLI's subscription. Recognition and synthesis follow the chosen service. Time to the first syllable is one round trip from the phone to the harness, plus the CLI's first token.
+The host is an existing machine. Recognition and synthesis follow the chosen service. From the end of speech to the start of sound, the two pieces already separated are about 1.45 s to resume the session and about 0.75 s for the first TTS chunk. The recognizer tail and playout are not yet split out of the total.
 
 ### Build order
 
 ```text
-0  Session skeleton: connect, and start receiving audio
-1  Decode mSBC, write a WAV, and confirm it is speech
-2  Encode mSBC, send it back, and confirm the glasses play it
-3  Cloud harness: audio pipe and CLI, echo text first
-4  Add recognition and synthesis, and complete one spoken turn
-5  Adaptive rate
-6  Photo: type 14 id 4, join the JPEG, hand it to a multimodal CLI
+0  Session skeleton: connect and finish the handshake     done
+1  Decode mSBC to PCM in the cloud and confirm speech     done
+2  Move playback to A2DP. Channel 3 playback was silent   done
+3  Streaming recognition, semantic end-of-turn, dsh, TTS  one turn done
+4  Photo after the wake, reusing the ids, join the JPEG   done
+5  Adaptive rate                                           not built
 ```
 
 ### Paths this design leaves aside
@@ -377,9 +393,11 @@ The host is an existing machine. Model cost follows that CLI's subscription. Rec
 | Path | Why |
 |---|---|
 | Build recognition, the model, and synthesis in-house | That is the whole intelligence path |
+| Send the dialog audio back on channel 3 | The frames are acknowledged and nothing is played |
 | Carry the dialog on HFP | Audio after the wake word is on SPP |
 | Open the system assistant after wake, then use the HFP microphone | That still depends on HFP, and the microphone may already be in use while recording |
 | Take audio from inside the official process | The intelligence path is still in-house, and the attachment has to stay in that process |
+| Hang a second vision or chat model on the harness | Understanding stays with dsh |
 | Use a remote callback for live dialog | That kind of callback fits asynchronous work |
 
-Send, receive, photo, and wake stay on SPP. A finished long task plays over A2DP, including after SPP has dropped.
+Uplink speech, photo, and wake stay on SPP. Playback is A2DP, including after SPP has dropped.

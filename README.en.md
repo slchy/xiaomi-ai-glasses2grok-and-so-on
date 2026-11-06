@@ -1,7 +1,7 @@
 # xiaomi-ai-glasses2grok-and-so-on
 
 [中文](README.md)
-[Demo](bilibili.com/video/BV1jn456gEeQ/)
+[Demo](https://www.bilibili.com/video/BV1jn456gEeQ/)
 Connect Xiaomi AI Glasses to your own voice agent. This repository currently publishes only the A5A5 frame protocol implementation. The application agent lives in a private implementation. The product design is at the end.
 
 The frame protocol is in [docs/a5a5.en.md](docs/a5a5.en.md). Tested properties are in [docs/FORMAL.en.md](docs/FORMAL.en.md). The implementation is `python/a5a5.py`.

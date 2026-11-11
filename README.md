@@ -2,9 +2,126 @@
 
 [English](README.en.md)<br>
 [演示视频](https://www.bilibili.com/video/BV1jn456gEeQ/)
-把小米 AI 眼镜接到自己的语音代理。本仓库目前仅公开 A5A5 帧协议实现，业务端代理位于私有实现。产品方案在文末。
 
-帧层协议见 [docs/a5a5.md](docs/a5a5.md)，已测性质见 [docs/FORMAL.md](docs/FORMAL.md)。实现在 `python/a5a5.py`。
+针对小米 AI 智能眼镜（型号 M2442G1）的第三方蓝牙 SPP 通信协议解析与 Android SDK 驱动实现。
+
+---
+
+## 技术文档与规范
+
+- **协议底层规范**：见 [docs/a5a5.md](docs/a5a5.md)（L1 帧格式、滑动窗口、魔数重同步与 SAR 状态机）。
+- **协议形式化规范与证明**：见 [docs/FORMAL.md](docs/FORMAL.md)（状态机不变量、GBN 窗口可靠性与反例探索）。
+- **协议能力矩阵**：见 [docs/CAPABILITY-MATRIX.md](docs/CAPABILITY-MATRIX.md)（涵盖 58 项硬件与协议能力、实测证据等级与 SDK 封装覆盖）。
+- **SDK 架构与实现**：见 [docs/SDK-ARCHITECTURE.md](docs/SDK-ARCHITECTURE.md)（7 模块解耦设计、无锁并发线程模型、车道背压与状态机）。
+- **帧解析参考实现（Python）**：位于 `python/a5a5.py`。
+- **Android SDK 完整工程**：位于 `sdk/`。
+
+---
+
+## Android SDK
+
+SDK 采用严格的分层单向依赖架构，划分为 7 个模块：
+
+| 模块 | 类型 | 坐标 / 产物 | 职责说明 |
+|---|---|---|---|
+| `:core-proto` | JVM | 内部实现 | Varint / Hex / CRC16-ARC / MiniJson 基础工具 |
+| `:core-api` | JVM | 内部 API | 公开契约层：状态定义、事件模型、查询 DTO 与常量 |
+| `:core` | JVM | 内部实现 | 核心协议引擎：L1 解包、L2 多路复用、SAR 状态机、握手认证 |
+| `:transport` | Android | 内部实现 | 蓝牙 SPP Socket I/O、后台泵线程与系统广播监听 |
+| `:facade` | Android | `com.miaiglasses:sdk` | **主对外门面 AAR**：导出 `GlassesSession` 与高层 API |
+| `:ktx` | Android | `com.miaiglasses:sdk-ktx` | **可选协程扩展 AAR**：提供 `Flow<GlassesEvent>` 与挂起扩展 |
+| `:sample` | Android | 冒烟测试 App | 包含配对建连、状态查询与音频流监听的演示应用 |
+
+### 快速接入 (Gradle)
+
+目前**没有发布到 Maven Central**，先用本地仓库：
+
+```bash
+cd sdk
+./gradlew publishToMavenLocal        # Windows: gradlew.bat publishToMavenLocal
+```
+
+然后让消费工程能解析 `mavenLocal()`（如果你的构建限制了仓库，需要显式加进
+`pluginManagement` / `dependencyResolutionManagement`）：
+
+```kotlin
+// build.gradle.kts
+repositories {
+    mavenLocal()
+    mavenCentral()
+    google()
+}
+dependencies {
+    implementation("com.miaiglasses:sdk:0.1.0-SNAPSHOT")
+    implementation("com.miaiglasses:sdk-ktx:0.1.0-SNAPSHOT") // 可选，提供 Kotlin 协程 / Flow 支持
+}
+```
+
+### 快速上手 (Kotlin)
+
+```kotlin
+import com.miaiglasses.core.session.GlassesEvent
+import com.miaiglasses.sdk.GlassesSession
+
+// 1. 获取已配对的蓝牙设备与 16 字节鉴权 Token
+val device: BluetoothDevice = bluetoothAdapter.getRemoteDevice("...")
+val token16: ByteArray = ... // 16 字节硬件 Token
+
+// 2. 异步开启会话（非阻塞，可在任意线程调用）
+val session = GlassesSession.open(context, device, token16)
+
+// 3. 注册事件监听器
+session.addListener { event ->
+    when (event) {
+        is GlassesEvent.StateChanged -> println("会话状态: ${event.state}")
+        is GlassesEvent.WearChanged  -> println("佩戴状态: ${event.status}")
+        is GlassesEvent.BatteryChanged -> println("电量变化: ${event.status.batteryPercent}%")
+        is GlassesEvent.Image -> {
+            println("收到拍摄预览图: ${event.jpeg.size} 字节")
+        }
+        is GlassesEvent.Audio -> {
+            // 实时上行音频流（mSBC 裸流）
+        }
+        is GlassesEvent.Error -> {
+            System.err.println("错误 [${event.code}]: ${event.message}")
+        }
+        else -> Unit
+    }
+}
+
+// 4. 调用高层业务能力
+session.capturePhoto() // 触发拍照
+session.syncTime()     // 同步设备时间
+
+// 5. 使用 Kotlin Flow 消费（需引入 sdk-ktx）
+// lifecycleScope.launch {
+//     session.events().collect { event -> ... }
+//     session.audio().collect { chunk -> ... }
+// }
+
+// 6. 优雅关闭会话
+session.close()
+```
+
+### 构建与测试
+
+**环境要求**：JDK 17（AGP 8.5 的下限）、Android SDK（`compileSdk 34`，`minSdk 24`）。
+Android 模块需要能找到 SDK：设 `ANDROID_HOME`，或在 `sdk/local.properties` 写 `sdk.dir=<路径>`
+（该文件已在 `.gitignore` 里，不会入库）。
+
+SDK 包含覆盖全协议栈的纯 JVM 单元测试与黄金向量回归：
+
+```bash
+cd sdk
+./gradlew test          # 全部模块的单测（经纯 JVM 仿真，不需要真机）
+./gradlew build         # 额外做 lint 与各 AAR 打包
+```
+
+---
+
+## Python 快速验证
+
+针对 L1 帧解包与校验，仓库提供了无第三方依赖的 Python 参考实现：
 
 ```bash
 python tests/test_frame.py
@@ -17,387 +134,22 @@ frame = build(b"hi", ftype=3, seq=0)
 frames, bad_crc, resync, dropped = parse(frame)
 ```
 
-调用时把 `python/` 放进 `PYTHONPATH`。
+> 调用时请将 `python/` 加入 `PYTHONPATH`。
 
-许可：[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)。
+---
 
-## 产品方案
+## 许可证 (Licensing)
 
-定稿于 2026-11-05。
+本项目采用多许可证分层管理，详见 [LICENSE.md](LICENSE.md)：
 
-两个决定：
+- **协议规范与帧参考实现 (`docs/`, `python/`)**：[CC0 1.0 Universal](LICENSES/CC0-1.0.txt)（公有领域奉献）
+- **Android SDK 核心驱动 (`sdk/core`, `transport`, `facade`, `ktx`)**：[PolyForm Noncommercial License 1.0.0](LICENSES/PolyForm-Noncommercial-1.0.0.txt)（仅限非商业研究）
+- **示例应用代码 (`sdk/sample/`)**：[MIT License](LICENSES/MIT.txt)
 
-1. 理解只走 dsh，经 ACP 调用。harness 不再另挂一套对话或视觉模型。早先的通用命令行调用已经退出当前链路。
-2. 语速表仍是设计。正在跑的链路按句、固定 1.0 倍提交 TTS，还没有 supply 跟踪。
+---
 
-### 架构
+## 免责声明 (Disclaimer)
 
-```text
-眼镜 ⇄ SPP ⇄ 手机（只转发帧）⇄ 裸 TCP（5 字节头）⇄ 云端 harness
-                                                      │
-                         流式 ASR / Smart Turn 判停 / dsh / 流式 TTS
-```
-
-手机只拆 SPP、SAR 和 MASS 头，把 mSBC 原样送上去。mSBC 到 PCM16 16 kHz 在云端完成。下行是 PCM16 24 kHz，经 `AudioTrack` 走 A2DP。上行 16 kHz、下行 24 kHz，播放端用 24 kHz，两路不共用一个采样率常数。
-
-手机和云端之间是裸 TCP，头固定 5 字节：
-
-```text
-[0]    type    1 音频（上行 mSBC，下行 PCM16）
-               2 图片（上行 JPEG，下行 take_photo 控制）
-               3 唤醒上下文（transactionId 与 requestId）
-[1:5]  length  u32 小端
-[5:]   payload
-```
-
-单帧上限 32 MB。长度错位时丢掉整个接收缓冲。半包必须读满，一次 `read` 不等于一帧。上行写入顺序是唤醒、图片、语音。
-
-| 层 | 谁做 | 内容 |
-|---|---|---|
-| 眼镜 | 不改 | 固件里的唤醒词、mSBC、回声消除、JPEG、SPP |
-| 手机 | 要写 | SPP 与可靠传输、MASS 分流、帧转发、拍照触发、A2DP 播放 |
-| 云端 harness | 要写 | mSBC 解码、能量门控、流式识别、判停、dsh、流式 TTS |
-
-三条数据流。
-
-语音对话：
-
-```text
-说 → 眼镜麦克风 → mSBC → SPP channel 3 → 手机只剥 MASS 头
-   → TCP type 1 → 云端解成 PCM16 16 kHz → 能量门控 → 流式 ASR
-   → Smart Turn 判停 → dsh → 流式文本 → 流式 TTS（PCM16 24 kHz）
-   → TCP type 1 → 手机 AudioTrack → A2DP → 眼镜播放
-```
-
-向 channel 3 回送 mSBC 时，SAR 会 ACK，眼镜没有声音。这条通道只承担上行。播放走 A2DP。
-
-固件自己做回声消除。播放期间回波底约 −80 dBFS，衰减按峰值估计至少 75 dB，双讲仍然正常。云端不再做回声消除。
-
-判停用语义概率，不用固定静音时长。句中停顿大约 0.19，说完大约 0.96 到 0.99。识别服务把静音不当成语音活动，没有语音时要主动结束识别，否则会空闲超时。
-
-拍照问答：
-
-```text
-dsh 判断需要看图 → MCP 工具 take_photo
-→ TCP type 2 → 手机发 WearPacket type 14、id 4
-→ 复用这次唤醒带来的 transaction id 和 request id
-→ MassType 3 再 MassType 4 → 手机拼成 JPEG
-→ TCP type 2 → 作为图片交给 dsh → 文本 → TTS → A2DP
-```
-
-拍照由模型决定要不要看，不是固定流程。手机自己造一个 transaction id 时，眼镜不回图。
-
-唤醒：
-
-```text
-说固件里的唤醒词 → 眼镜进入录音
-→ SPP 上收到 WearPacket type 14、id 10
-→ 手机留下 transaction id 和 request id，用 TCP type 3 交给云端
-→ 手机开始转发音频
-```
-
-唤醒词在固件里，手机改不了。识别会把唤醒词那一句也转成文字，云端按白名单丢掉，不算一轮。SPP 同一时间只有一个会话，第二条连接会失败。
-
-### 体验
-
-下面这张表是设计，还没有进正在跑的链路。正在跑的是按句、固定 1.0 倍。续会话大约 1.45 秒，TTS 首块大约 0.75 秒，这两段加起来已经约 2.2 秒，还没算上识别尾包和起播，高于 800 毫秒的目标。
-
-语速随供字速度变化。文本供得上就快一点，供不上就慢一点，播放不停。
-
-| 语言 | 舒适 | 播音或快速 | 仍能听懂的上限 |
-|---|---|---|---|
-| 中文 | 200–240 字/分，约 3.5–4 字/秒 | 300 字/分，5 字/秒 | 400 字/分以上 |
-| 英文 | 150 wpm，2.5 词/秒 | 180–200 wpm | 275 wpm |
-
-中文大约一秒 4 个字。
-
-| 档位 | 倍速 | 中文实速 | 条件 |
-|---|---|---|---|
-| 快 | 1.15x | 4.6 字/秒 | supply > 6 秒 |
-| 正常 | 1.00x | 4.0 字/秒 | 默认 |
-| 慢 | 0.90x | 3.6 字/秒 | supply < 2 秒 |
-| 很慢 | 0.85x | 3.4 字/秒 | supply < 1 秒 |
-
-下限是 0.85 倍。再慢就像逐字念。
-
-supply 是还能播多久：
-
-```text
-supply = 已合成、还没播放的音频秒数
-       + 已收到、还没合成的字数 ÷ 当前语速
-```
-
-| supply | 动作 |
-|---|---|
-| < 1.0 秒 | 降到 0.85x |
-| 1.0–2.0 秒 | 降到 0.90x |
-| 2.0–4.0 秒 | 保持 1.00x |
-| > 4.0 秒，且当前不超过 1.0x | 回到 1.00x |
-| > 6.0 秒 | 升到 1.15x |
-
-三条约束：
-
-1. 只在句子边界调速。TTS 按句提交，一句一个速度。
-2. 降档之后，supply 要超过 3 秒才回升，避免在阈值上来回跳。
-3. 已经 0.85x 还不够时，插入填充，速度停在这里。例如「嗯……」「让我想想」「这个我查一下」。
-
-| 指标 | 目标 |
-|---|---|
-| 首字延迟（说完到第一个音节） | < 800 ms |
-| 断流 | 0 次 |
-
-先攒 1.5–2 秒音频（大约 6–8 个中文字）再开口，之后靠调速接上。
-
-```python
-def pick_speed(supply_sec: float, last_speed: float) -> float:
-    if supply_sec < 1.0:
-        return 0.85
-    if supply_sec < 2.0:
-        return 0.90
-    if supply_sec > 6.0:
-        return 1.15
-    if supply_sec > 4.0 and last_speed <= 1.0:
-        return 1.00
-    return last_speed
-```
-
-TTS 要能按句流式，否则速度调不了。
-
-PCM16、16 kHz、单声道是每秒 32 KB。一句 20 个字大约 5 秒，约 160 KB。流式 TTS 要持续至少每秒 32 KB，否则播放会空。
-
-### 异步任务
-
-agent 跑长任务时，眼镜可能因为超时、距离或休眠断开。结果留着，等能播的时候再播。
-
-| 状态 | 动作 |
-|---|---|
-| 任务完成，A2DP 还连着 | 马上播 |
-| 任务完成，A2DP 已断 | 放进队列，等系统自己重连后再播 |
-| 超过 5 分钟还没连回来 | 发一条系统通知，结果留到下次会话 |
-| 用户正在说，或正在播 | 排队，按下面的优先级 |
-
-长任务先给一句确认，做完再补结果：
-
-```text
-用户：帮我查下明天天气
-约 300 ms 后：好的，我查一下。
-agent 跑完：明天晴，-2 到 11 度。
-```
-
-这段结果用 A2DP 播。播的时候 SPP 可以已经断开。上行语音仍在 SPP channel 3。
-
-### 状态
-
-状态名与 LiveKit Agents、Pipecat 的语音状态机相同。
-
-```text
-Agent:  idle → listening → thinking → speaking → listening
-                                    ↓
-                        工具还在执行时停在 thinking
-User:   speaking | listening | away
-```
-
-提问和审批都是一次普通播报，说完回到 listening。
-
-| 规则 | 原因 |
-|---|---|
-| 工具执行期间保持 thinking | 离开计时只在真正空闲时走 |
-| 双向静默 15 秒，进入 away | 人已经离开，就不再突然出声 |
-| 被打断的消息记下 interrupted，并记下截断时间 | 上下文保留说到哪一句 |
-
-### 打断
-
-打断要同时达到字数和时长。
-
-| 参数 | 值 | 含义 |
-|---|---|---|
-| 最少字数 | 2–3 个中文字 | 播报中要说够这些字才算打断 |
-| 最短时长 | 300 ms | 滤掉咳嗽和噪声 |
-| 是否允许打断 | 按这一次播报设置 | 审批提示保持完整 |
-| 误打断恢复 | 开 | 语音活动检测误报之后，接着播原来的内容 |
-
-本地打断词，在手机上处理，不等云端来回：
-
-```text
-算了 / 取消 / 停止 / 别查了 / 不用了 / 停一下 / 等等
-```
-
-命中之后停掉当前 dsh，并马上播一句确认。
-
-### 播报优先级
-
-只有一个声道。
-
-| 优先级 | 类型 | 可丢 | 可延后 |
-|---|---|---|---|
-| P0 | 打断确认 | 否 | 否 |
-| P1 | 审批请求 | 否 | 否 |
-| P2 | agent 提问 | 否 | 否 |
-| P3 | 错误 | 否 | 否 |
-| P4 | 任务结果 | 否 | 可 |
-| P5 | 进度和填充 | 可 | 可 |
-
-长任务期间自动插入「嗯…让我想想」。
-
-### 副作用和审批
-
-| 操作 | 门禁 |
-|---|---|
-| 读：查询、搜索 | 直接做 |
-| 写：发消息、下单、改文件 | 先过 P1 审批 |
-| 不可逆：删除、转账、公开 | 两次确认 |
-
-打断发生时，已经做出的副作用要照实说。邮件已经发出去，就说明撤不回来。
-
-### 手机和云端各管什么
-
-```text
-手机：SPP 编解码、本地队列、A2DP 播报、断线重连
-云端：任务状态机、结果保存、dsh 调用、重连后补发
-```
-
-任务：
-
-```jsonc
-{
-  "id": "task_01H...",
-  "state": "queued | running | needs_input | needs_approval | done | failed | cancelled | orphaned",
-  "kind": "chat | vision",
-  "prompt": "...",
-  "result": "...",
-  "cliSessionId": "...",
-  "createdAt": 0,
-  "updatedAt": 0,
-  "delivered": false
-}
-```
-
-`cliSessionId` 用来继续同一段 dsh 会话。`delivered` 在收到确认后才成为 true。
-
-重连：
-
-```text
-手机 → 云端   {"type":"sync", "since": "<lastSeenTaskId>"}
-云端 → 手机   {"type":"tasks", "items":[...还没投递的...]}
-手机 → 云端   {"type":"ack", "ids":["task_01H..."]}
-```
-
-三条规则：
-
-1. 任务状态和 `cliSessionId` 存在云端。
-2. 重连先同步还没投递的结果，以及还没做完的任务。
-3. 断线超过 10 分钟的任务标成 orphaned。下次唤醒时问上次那个任务还要不要继续。
-
-### 并发
-
-一个 dsh 进程串行执行，随时可以打断。
-
-| 用户说的 | 判定 | 动作 |
-|---|---|---|
-| 「算了」「取消」 | 打断 | 停掉 dsh，播「已取消」 |
-| 「好了吗」 | 查状态 | 本地回答，不占用 dsh |
-| 「不，改成后天」 | 修改 | 排成下一个任务，带上当前上下文 |
-| 「顺便订个外卖」 | 新任务 | 排成下一个任务 |
-
-单个任务超过 3 分钟，播「有点久，我先停一下」并停掉。队列超过 5 条就不再收新的。
-
-### 手机客户端
-
-| 做 | 留给云端 |
-|---|---|
-| SPP 连接、可靠传输、建立会话 | mSBC 解码、流式识别、dsh、流式 TTS |
-| MASS 分流（语音、图片、OCR） | 会话上下文 |
-| 只剥帧头，原样转发 mSBC | 语速调度（尚未实现，运行中固定 1.0 倍） |
-| 复用唤醒里的 id 触发拍照 | 多设备管理 |
-| A2DP 播放 24 kHz PCM、断线重连 | 任务状态和结果保存 |
-
-手机上没有 mSBC 编解码。云端用标准 mSBC 解码器得到 16 kHz PCM。
-
-channel 3 是复用通道。明文 MASS 的布局以帧层文档为准。分流看 MassType，包长不能用来区分音频和图片。
-
-| MassType | 去向 |
-|---|---|
-| 1、2、6、7 | 语音 |
-| 3、4 | 识图，两段拼进同一个缓冲 |
-| 5 | OCR |
-| 9 | 对话原图 |
-| 11 | 高清图 |
-| 8、10 | 缩略图和埋点，本方案不消费 |
-
-四条要求：
-
-1. 按 MassType 分流。图片分片也可以是 582 字节。
-2. MassType 3 和 4 拼进同一个缓冲。总长度只在首片的 `[6:10]`，后面的片是 0。
-3. 半截帧先留着，等后续字节。声明长度还没到齐的尾巴要保留。
-4. 对话音频剥掉 12 字节头之后，是连续的 57 字节 mSBC 帧。
-
-拼完的图片字节就是 JPEG。
-
-拍照命令是 WearPacket type 14、id 4。id 9 不是这条命令。transaction id 和 request id 用这次唤醒（type 14、id 10）带来的那一对。图以 MassType 3、4 回到 channel 3。唤醒音频的首包可以远大于 582 字节，长度以头里的字段为准。
-
-channel 1 上会有眼镜发来的服务调用，手机要有一层派发。支付、工厂模式和互联不在本方案里。
-
-### 云端 harness
-
-理解走 dsh，经 ACP。流式文本按句交给 TTS。早先直接调用各家命令行的做法已经退出这条链路。
-
-识别用支持边推边出字的流式服务。有一家接口只接受整段音频内联，没有用作上行。合成用流式 PCM16，采样率 24 kHz。
-
-| 要求 | 原因 |
-|---|---|
-| 流式识别和流式合成 | 整段做完再返回，首字会到数秒 |
-| 同一段 dsh 会话接着用 | 每轮都要带上上文 |
-| 按句切开 | 以后调速以句为单位。现在每句都是 1.0 倍 |
-
-换到更近的机房后，三个上游的首字节快了 0.45 到 0.72 秒。TTS 首块从 2.2–2.9 秒降到 0.75–1.0 秒。
-
-### 已经对过的，和还没对过的
-
-已经对过：
-
-| 项 | 结果 |
-|---|---|
-| 帧、可靠传输、L2 | 在这只眼镜上收发过 |
-| 自有客户端自己建立的 SPP 会话 | 官方应用不占着这条口时可以连上，并完成握手 |
-| mSBC | 云端解成 16 kHz PCM。把 mSBC 从 channel 3 送回去会得到 ACK，眼镜无声 |
-| 识图 | 复用唤醒带来的 id 后，MassType 3 和 4 拼成的 JPEG 与声明长度一致 |
-| 唤醒 | type 14、id 10。识别结果里的唤醒词那一句被丢掉 |
-| 实时语音 | 流式识别、语义判停、dsh、流式 TTS、A2DP 出声，已经走通一轮 |
-| 固件回声消除 | 播放期双讲仍然正常 |
-
-还没对过：
-
-| 项 | 卡住什么 |
-|---|---|
-| 按 supply 改语速 | 800 毫秒的首字目标。运行中仍是固定 1.0 倍 |
-| 在途帧超过设备窗口 3 时会不会 NAK | 大批量发送 |
-| 发送超时在设备侧是 10 秒还是日志里出现过的 6 秒 | 那份日志已经不在，两边先都记着 |
-
-### 成本与延迟
-
-服务器用现有机器。识别和合成按所选服务计费。从说完到开始有声音，已经能拆开的两段是续会话约 1.45 秒、TTS 首块约 0.75 秒。识别尾包和起播还没从总数里拆出来。
-
-### 实施顺序
-
-```text
-0  会话骨架：连上眼镜，完成握手          已完成
-1  云端把 mSBC 解成 PCM，确认是人声      已完成
-2  下行改走 A2DP。channel 3 回灌确认无声  已完成
-3  流式识别、语义判停、dsh、流式 TTS     已走通一轮
-4  唤醒后复用 id 拍照，拼 JPEG            已完成
-5  自适应语速                              未做
-```
-
-### 这条方案里不用的路径
-
-| 路径 | 原因 |
-|---|---|
-| 自建识别、大模型和合成 | 整条智能链路都要自己做 |
-| 把对话音频从 channel 3 送回眼镜 | SAR 会确认，播放没有声音 |
-| HFP 送对话音频 | 唤醒之后的音频在 SPP 上 |
-| 唤醒后调起系统助手，再走 HFP 麦克风 | 仍要靠 HFP，录音态下麦克风可能已被占用 |
-| 在官方进程里取音频 | 智能链路还是要自建，而且要一直挂在那个进程里 |
-| 在 harness 上再挂一个视觉或对话模型 | 理解只经 dsh |
-| 远程回调用作实时对话 | 这种回调适合异步任务 |
-
-上行语音、拍照和唤醒在 SPP 上。播放走 A2DP，SPP 断开也能播。
+1. 本项目为独立研究者的第三方开源成果，**与小米科技（Xiaomi）或蜂巢科技（Superhexa）无任何附属、赞助或认可关系**。
+2. 所有提及的产品名称与商标版权均归原厂商所有，在此仅用于客观技术兼容性说明。
+3. 本项目不提供、不代取、不保存任何硬件访问凭据（Token），使用本项目的研究者须自行确保对所连接的硬件拥有合法的所有权与操作权限。

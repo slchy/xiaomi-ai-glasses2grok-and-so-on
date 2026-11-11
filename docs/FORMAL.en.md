@@ -96,7 +96,7 @@ L₂(ch, op, p) = bytes([ch, op]) ‖ p
 l2_unpack(L₂(ch, op, p)) = (ch, op, p)
 ```
 
-`ch` and `op` are one byte each. `op = 2` means the remaining bytes are ciphertext. The cipher is not in this repository.
+`ch` and `op` are one byte each. `op = 2` means the remaining bytes are ciphertext (AES-CTR; see `sdk/core` for the cipher implementation).
 
 ### W2 Container tag
 

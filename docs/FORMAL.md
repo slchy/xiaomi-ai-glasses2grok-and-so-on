@@ -95,7 +95,7 @@ L₂(ch, op, p) = bytes([ch, op]) ‖ p
 l2_unpack(L₂(ch, op, p)) = (ch, op, p)
 ```
 
-`ch`、`op` 各是一个字节。`op = 2` 表示剩余字节是密文。算法不在本仓库。
+`ch`、`op` 各是一个字节。`op = 2` 表示剩余字节是密文（AES-CTR，加解密实现见 `sdk/core`）。
 
 ### W2 容器 tag
 

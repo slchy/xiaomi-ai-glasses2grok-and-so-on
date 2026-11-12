@@ -54,8 +54,8 @@ repositories {
     google()
 }
 dependencies {
-    implementation("com.miaiglasses:sdk:0.1.0-SNAPSHOT")
-    implementation("com.miaiglasses:sdk-ktx:0.1.0-SNAPSHOT") // Optional: Coroutines & Flow support
+    implementation("com.miaiglasses:sdk:0.1.1")
+    implementation("com.miaiglasses:sdk-ktx:0.1.1") // Optional: Coroutines & Flow support
 }
 ```
 

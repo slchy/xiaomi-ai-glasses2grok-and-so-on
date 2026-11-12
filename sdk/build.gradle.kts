@@ -4,9 +4,9 @@ plugins {
     id("com.android.library") version "8.5.2" apply false
 }
 
-// 本地与导出的默认版本；打 tag 发版时用 -PmiaiglassesVersion=0.1.0 覆盖，
-// 这样 release 里的 jar/aar 不会带着 -SNAPSHOT 后缀。
-val releaseVersion: String = (findProperty("miaiglassesVersion") as String?) ?: "0.1.0-SNAPSHOT"
+// 版本号的唯一来源是 gradle.properties 的 miaiglassesVersion：tag.yml 读它决定打哪个 tag。
+// 打 tag 时 release.yml 再用 -PmiaiglassesVersion=<tag 去掉 v> 覆盖一次，保证产物与 tag 严格一致。
+val releaseVersion: String = (findProperty("miaiglassesVersion") as String?) ?: "0.0.0-SNAPSHOT"
 
 allprojects {
     group = "com.miaiglasses"

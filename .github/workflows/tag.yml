@@ -1,0 +1,64 @@
+name: Tag
+
+# 版本号只有一个来源：sdk/gradle.properties 的 miaiglassesVersion。
+# 把它改大并推上 main，这个 workflow 就打 v<版本> 并发版；版本没变则什么都不做（幂等）。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write # gh workflow run 需要的权限
+
+# 不能 cancel-in-progress：并发跑两次会一个打 tag、一个报 tag 已存在
+concurrency:
+  group: tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Tag if the version changed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # 需要已有的 tag 才能判断「发过了」
+
+      - name: Read version
+        id: v
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^miaiglassesVersion=//p' sdk/gradle.properties | tr -d '[:space:]')"
+          test -n "$version" || { echo "sdk/gradle.properties 里没有 miaiglassesVersion" >&2; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "version=$version tag=v$version"
+
+      - name: Check whether the tag already exists
+        id: check
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify "refs/tags/${{ steps.v.outputs.tag }}" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "${{ steps.v.outputs.tag }} 已存在，跳过"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and push the tag
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.v.outputs.tag }}" -m "Release ${{ steps.v.outputs.tag }}"
+          git push origin "refs/tags/${{ steps.v.outputs.tag }}"
+
+      # 用 GITHUB_TOKEN 推的 tag 不会触发 release.yml（防递归），所以显式 dispatch 一次。
+      # workflow_dispatch 是这条规则的例外，可以正常起新的一次 run。
+      - name: Trigger the release
+        if: steps.check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --ref "${{ steps.v.outputs.tag }}"

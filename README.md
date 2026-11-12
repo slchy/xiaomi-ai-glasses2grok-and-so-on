@@ -54,8 +54,8 @@ repositories {
     google()
 }
 dependencies {
-    implementation("com.miaiglasses:sdk:0.1.0-SNAPSHOT")
-    implementation("com.miaiglasses:sdk-ktx:0.1.0-SNAPSHOT") // 可选，提供 Kotlin 协程 / Flow 支持
+    implementation("com.miaiglasses:sdk:0.1.1")
+    implementation("com.miaiglasses:sdk-ktx:0.1.1") // 可选，提供 Kotlin 协程 / Flow 支持
 }
 ```
 

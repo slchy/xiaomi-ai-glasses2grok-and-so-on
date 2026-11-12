@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-12T21:02:30Z
+exported-at    2026-11-12T21:15:43Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符
@@ -14,7 +14,7 @@ transforms
   - tests/golden/vectors.txt：用 mock token 重新生成
 files
   sdk/.gitignore                                                         72dca7e4edbe14a0
-  sdk/build.gradle.kts                                                   3947b2c52265e6f7
+  sdk/build.gradle.kts                                                   2d476ef764da4255
   sdk/core/build.gradle.kts                                              8de502b2850bcc80
   sdk/core/src/main/kotlin/com/miaiglasses/core/control/ControlRouter.kt 2735948cdde4a342
   sdk/core/src/main/kotlin/com/miaiglasses/core/crypto/Crypto.kt         5749016495d6d3f2
@@ -111,7 +111,7 @@ files
   sdk/facade/src/test/kotlin/com/miaiglasses/sdk/SendResultTest.kt       706f3f34007d0fea
   sdk/gradle/wrapper/gradle-wrapper.jar                                  2db75c40782f5e8b
   sdk/gradle/wrapper/gradle-wrapper.properties                           2caec011a749b18a
-  sdk/gradle.properties                                                  b7310e43c89c8647
+  sdk/gradle.properties                                                  32c6adc8ccd5c508
   sdk/gradlew                                                            a3648413b47ef77a
   sdk/gradlew.bat                                                        57931b17dd228e5c
   sdk/ktx/build.gradle.kts                                               a6437805b389e86a
@@ -119,7 +119,7 @@ files
   sdk/ktx/src/main/kotlin/com/miaiglasses/sdk/ktx/GlassesFlow.kt         f4657d09b70cf610
   sdk/ktx/src/test/kotlin/com/miaiglasses/sdk/ktx/GlassesFlowTest.kt     ae142f9ced5576ed
   sdk/README.md                                                          67eeaa393c738a66
-  sdk/sample/build.gradle.kts                                            1d75d8f4b8379146
+  sdk/sample/build.gradle.kts                                            e921f659044a12b8
   sdk/sample/src/main/AndroidManifest.xml                                f975e7003b111a1a
   sdk/sample/src/main/java/com/miaiglasses/sample/MainActivity.kt        3682810e5ffb4c7d
   sdk/sample/src/main/res/layout/activity_main.xml                       928f05161757c12b
@@ -159,4 +159,5 @@ hand-written
   python/a5a5.py
   README.en.md
   README.md
+  release-notes/v0.1.1.md
   tests/test_frame.py

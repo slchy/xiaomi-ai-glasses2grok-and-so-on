@@ -43,7 +43,13 @@ jobs:
           cp sdk/sample/build/outputs/apk/debug/sample-debug.apk \
              "dist/xiaomi-ai-glasses-sample-${VERSION}-debug.apk"
           cp sdk/*/build/libs/*.jar dist/ 2>/dev/null || true
-          cp sdk/*/build/outputs/aar/*-release.aar dist/ 2>/dev/null || true
+          # AAR 的默认文件名是 <module>-release.aar，不带版本 —— 重命名后再挂出去
+          for aar in sdk/*/build/outputs/aar/*-release.aar; do
+            [ -e "$aar" ] || continue
+            base="$(basename "$aar")"
+            module="${base%-release.aar}"
+            cp "$aar" "dist/${module}-${VERSION}.aar"
+          done
           ls -lh dist
           test -n "$(ls -A dist)"
 

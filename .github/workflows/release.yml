@@ -31,14 +31,17 @@ jobs:
 
       - name: Assemble
         working-directory: sdk
-        run: ./gradlew assemble -PmiaiglassesVersion="${GITHUB_REF_NAME#v}" --console=plain
+        run: ./gradlew assemble :sample:assembleDebug -PmiaiglassesVersion="${GITHUB_REF_NAME#v}" --console=plain
 
-      # 产物：core-proto / core-api / core 是 jar，facade / ktx / transport 是 aar。
-      # 只发 release AAR —— debug 变体不带混淆规则，不适合对外。
+      # 产物：sample 是可直接安装的演示 App（debug 签名）；core-proto / core-api / core
+      # 是 jar；facade / ktx / transport 是 release AAR。debug AAR 不对外发。
       - name: Collect artifacts
         run: |
           set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
           mkdir -p dist
+          cp sdk/sample/build/outputs/apk/debug/sample-debug.apk \
+             "dist/xiaomi-ai-glasses-sample-${VERSION}-debug.apk"
           cp sdk/*/build/libs/*.jar dist/ 2>/dev/null || true
           cp sdk/*/build/outputs/aar/*-release.aar dist/ 2>/dev/null || true
           ls -lh dist

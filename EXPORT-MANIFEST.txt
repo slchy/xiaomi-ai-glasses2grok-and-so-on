@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-11T19:27:24Z
+exported-at    2026-11-12T06:09:27Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符
@@ -14,7 +14,7 @@ transforms
   - tests/golden/vectors.txt：用 mock token 重新生成
 files
   sdk/.gitignore                                                         72dca7e4edbe14a0
-  sdk/build.gradle.kts                                                   08b94d471a0b5f09
+  sdk/build.gradle.kts                                                   3947b2c52265e6f7
   sdk/core/build.gradle.kts                                              8de502b2850bcc80
   sdk/core/src/main/kotlin/com/miaiglasses/core/control/ControlRouter.kt 2735948cdde4a342
   sdk/core/src/main/kotlin/com/miaiglasses/core/crypto/Crypto.kt         02a373fb0f7bfd15

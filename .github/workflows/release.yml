@@ -26,11 +26,12 @@ jobs:
 
       - name: Test
         working-directory: sdk
-        run: ./gradlew test --console=plain
+        # tag 去掉前缀的 v 当版本号：v0.1.0 → 0.1.0，产物不会带 -SNAPSHOT
+        run: ./gradlew test -PmiaiglassesVersion="${GITHUB_REF_NAME#v}" --console=plain
 
       - name: Assemble
         working-directory: sdk
-        run: ./gradlew assemble --console=plain
+        run: ./gradlew assemble -PmiaiglassesVersion="${GITHUB_REF_NAME#v}" --console=plain
 
       # 产物：core-proto / core-api / core 是 jar，facade / ktx / transport 是 aar。
       # 只发 release AAR —— debug 变体不带混淆规则，不适合对外。

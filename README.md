@@ -3,6 +3,8 @@
 [English](README.en.md)<br>
 [演示视频](https://www.bilibili.com/video/BV1jn456gEeQ/)
 
+[![CI](https://github.com/slchy/xiaomi-ai-glasses2grok-and-so-on/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/slchy/xiaomi-ai-glasses2grok-and-so-on/actions/workflows/ci.yml)
+
 针对小米 AI 智能眼镜（型号 M2442G1）的第三方蓝牙 SPP 通信协议解析与 Android SDK 驱动实现。
 
 ---

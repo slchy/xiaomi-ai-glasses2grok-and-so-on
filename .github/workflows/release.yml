@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test
+        working-directory: sdk
+        run: ./gradlew test --console=plain
+
+      - name: Assemble
+        working-directory: sdk
+        run: ./gradlew assemble --console=plain
+
+      # 产物：core-proto / core-api / core 是 jar，facade / ktx / transport 是 aar。
+      # 只发 release AAR —— debug 变体不带混淆规则，不适合对外。
+      - name: Collect artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp sdk/*/build/libs/*.jar dist/ 2>/dev/null || true
+          cp sdk/*/build/outputs/aar/*-release.aar dist/ 2>/dev/null || true
+          ls -lh dist
+          test -n "$(ls -A dist)"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes

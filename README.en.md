@@ -3,6 +3,8 @@
 [中文](README.md)<br>
 [Demo](https://www.bilibili.com/video/BV1jn456gEeQ/)
 
+[![CI](https://github.com/slchy/xiaomi-ai-glasses2grok-and-so-on/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/slchy/xiaomi-ai-glasses2grok-and-so-on/actions/workflows/ci.yml)
+
 Third-party Bluetooth SPP protocol specification and Android SDK driver implementation for Xiaomi AI Glasses (Model M2442G1).
 
 ---

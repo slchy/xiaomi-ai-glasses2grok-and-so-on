@@ -99,7 +99,7 @@ public sealed interface VoiceEvent {
 /** 上行 `Voice` 包解析。入口是 `(id, payload)`，即 `WearPacket` 的 id 与 payload。 */
 public object VoiceCodec {
 
-    // ---- 下行字段号：与 `原有的 Java 实现` 一致，改之前先看那里的踩坑记录 ----
+    // ---- 下行字段号：与 `docs/a5a5.md` 规范一致（改字段号前先核对规范） ----
     private const val VOICE_FIELD_MULTIMODAL = 4
     private const val MULTIMODAL_FIELD_REQUEST_INFO = 1
     private const val MULTIMODAL_FIELD_CMD = 2
@@ -123,10 +123,10 @@ public object VoiceCodec {
     /**
      * 构造 `Voice id=4` `multiModel` 的**内容**（不含 `WearPacket` 头，供 `sendWear(14, 4, …)` 用）。
      *
-     * 移植自 `原有的 Java 实现`，行为逐条对齐：
+     * 依据 `docs/a5a5.md` 规范实现，与真机行为逐字节比对一致：
      *
      * - `VoiceRequestInfo` **f1 = requestId、f2 = transactionId**（写反 → 设备 0 字节响应，
-     *   见 `参考协议``CaptureTest` B4/B5）
+     *   见 `docs/a5a5.md` 规范）
      * - `resourceId = "multimodal_" + transactionId + hex(salt)`
      * - `cmd = 1`（`IMAGE_CAPTURE_AND_TRANS`）
      * - `requestId` 为 null 时**仍写 f1**（空 payload 也发 tag+00，否则设备不认）
@@ -256,5 +256,5 @@ private fun ByteArray.utf8(): String = String(this, Charsets.UTF_8)
 
 private fun ByteArray.toHex(): String = joinToString(" ") { "%02x".format(it) }
 
-/** 小写、无分隔（对齐 `原有的 Java 实现`，resourceId 里要用同一个格式）。 */
+/** 小写、无分隔（对齐 `docs/a5a5.md` 规范，resourceId 里要用同一个格式）。 */
 internal fun ByteArray.toHexPlain(): String = joinToString("") { "%02x".format(it) }

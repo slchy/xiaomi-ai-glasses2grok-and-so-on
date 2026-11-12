@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-12T06:09:27Z
+exported-at    2026-11-12T21:02:30Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符
@@ -17,21 +17,21 @@ files
   sdk/build.gradle.kts                                                   3947b2c52265e6f7
   sdk/core/build.gradle.kts                                              8de502b2850bcc80
   sdk/core/src/main/kotlin/com/miaiglasses/core/control/ControlRouter.kt 2735948cdde4a342
-  sdk/core/src/main/kotlin/com/miaiglasses/core/crypto/Crypto.kt         02a373fb0f7bfd15
+  sdk/core/src/main/kotlin/com/miaiglasses/core/crypto/Crypto.kt         5749016495d6d3f2
   sdk/core/src/main/kotlin/com/miaiglasses/core/crypto/SessionKeys.kt    c16dda40de7ba6ab
   sdk/core/src/main/kotlin/com/miaiglasses/core/handshake/HandshakeDriver.kt 8e01cde1f021b715
-  sdk/core/src/main/kotlin/com/miaiglasses/core/l1/L1.kt                 ef839e5828e418da
-  sdk/core/src/main/kotlin/com/miaiglasses/core/l1/L1Parser.kt           c35ef6f74f2f6d3a
+  sdk/core/src/main/kotlin/com/miaiglasses/core/l1/L1.kt                 52b5f4d84d68fcdd
+  sdk/core/src/main/kotlin/com/miaiglasses/core/l1/L1Parser.kt           294c58f71784f776
   sdk/core/src/main/kotlin/com/miaiglasses/core/l2/L2.kt                 752a5fb42cbd3110
   sdk/core/src/main/kotlin/com/miaiglasses/core/mass/Mass.kt             be0806f2ff040db8
-  sdk/core/src/main/kotlin/com/miaiglasses/core/mass/MassAssembler.kt    88292f33b2ec60a7
+  sdk/core/src/main/kotlin/com/miaiglasses/core/mass/MassAssembler.kt    8153c567d7bc574a
   sdk/core/src/main/kotlin/com/miaiglasses/core/mass/MassFileAssembler.kt e97d81cb0a842a81
   sdk/core/src/main/kotlin/com/miaiglasses/core/media/MediaFile.kt       55a0dd5e95d1793c
   sdk/core/src/main/kotlin/com/miaiglasses/core/sar/Lane.kt              fefa4b18c670526a
   sdk/core/src/main/kotlin/com/miaiglasses/core/sar/SarEngine.kt         9caac8fb62381b14
   sdk/core/src/main/kotlin/com/miaiglasses/core/sar/SarInternals.kt      5becadf7c2775c45
-  sdk/core/src/main/kotlin/com/miaiglasses/core/session/SessionEngine.kt 0598942d5864180e
-  sdk/core/src/test/kotlin/com/miaiglasses/core/control/ControlRouterTest.kt ec3926c3148585ed
+  sdk/core/src/main/kotlin/com/miaiglasses/core/session/SessionEngine.kt 2a40b458d4c88594
+  sdk/core/src/test/kotlin/com/miaiglasses/core/control/ControlRouterTest.kt 17b628bb3671dd99
   sdk/core/src/test/kotlin/com/miaiglasses/core/crypto/CryptoTest.kt     4a47de87b460a694
   sdk/core/src/test/kotlin/com/miaiglasses/core/crypto/SessionKeysTest.kt 0e27c424c9348441
   sdk/core/src/test/kotlin/com/miaiglasses/core/handshake/HandshakeDriverTest.kt 653a4b9f790bc947
@@ -41,13 +41,13 @@ files
   sdk/core/src/test/kotlin/com/miaiglasses/core/l1/L1RobustnessTest.kt   e53fa43c6459ec0d
   sdk/core/src/test/kotlin/com/miaiglasses/core/l2/L2Test.kt             b7e62369e9af9c8f
   sdk/core/src/test/kotlin/com/miaiglasses/core/mass/MassFileAssemblerTest.kt 75498827e9132902
-  sdk/core/src/test/kotlin/com/miaiglasses/core/mass/MassTest.kt         59ca526d98731b71
+  sdk/core/src/test/kotlin/com/miaiglasses/core/mass/MassTest.kt         9eed51b7f97413a7
   sdk/core/src/test/kotlin/com/miaiglasses/core/media/MediaFileTest.kt   36b413e46dba1904
   sdk/core/src/test/kotlin/com/miaiglasses/core/sar/LaneBackpressureTest.kt 803f2b5a6e222b15
   sdk/core/src/test/kotlin/com/miaiglasses/core/sar/SarEngineTest.kt     8b3e3e170db0f4fc
   sdk/core/src/test/kotlin/com/miaiglasses/core/sar/SarGoldenTest.kt     f3bd1e8d79378bfd
   sdk/core/src/test/kotlin/com/miaiglasses/core/sar/SarStallStatsTest.kt e7b6419c5a7c6d99
-  sdk/core/src/test/kotlin/com/miaiglasses/core/session/SessionEngineTest.kt f3b1dc4c650b9bd6
+  sdk/core/src/test/kotlin/com/miaiglasses/core/session/SessionEngineTest.kt 369423bce422b5a0
   sdk/core/src/test/kotlin/com/miaiglasses/core/wear/WearTest.kt         36ede4ff09c4d82d
   sdk/core-api/build.gradle.kts                                          5d9de6e0c49011c0
   sdk/core-api/src/main/kotlin/com/miaiglasses/core/album/Album.kt       205e7bf931fc1e76
@@ -64,15 +64,15 @@ files
   sdk/core-api/src/main/kotlin/com/miaiglasses/core/media/RecordEnums.kt 99982c8d2c8fd0d6
   sdk/core-api/src/main/kotlin/com/miaiglasses/core/query/GestureSettings.kt bcdc9ad328c0ef70
   sdk/core-api/src/main/kotlin/com/miaiglasses/core/query/Query.kt       2bedc444fe4dbc94
-  sdk/core-api/src/main/kotlin/com/miaiglasses/core/query/ReportData.kt  dcfb1f00defd6109
+  sdk/core-api/src/main/kotlin/com/miaiglasses/core/query/ReportData.kt  9b3ed49b54c312b9
   sdk/core-api/src/main/kotlin/com/miaiglasses/core/sar/SarConfig.kt     24b87dbe1761fad7
-  sdk/core-api/src/main/kotlin/com/miaiglasses/core/session/ErrorCode.kt e23ed12d54f40d93
-  sdk/core-api/src/main/kotlin/com/miaiglasses/core/session/SessionState.kt af1d595b5145950a
+  sdk/core-api/src/main/kotlin/com/miaiglasses/core/session/ErrorCode.kt 6e88027e2f50dea9
+  sdk/core-api/src/main/kotlin/com/miaiglasses/core/session/SessionState.kt 948ccdc5ac1eaf5d
   sdk/core-api/src/main/kotlin/com/miaiglasses/core/system/SystemTimeCodec.kt 0a5e3e005dffb26a
-  sdk/core-api/src/main/kotlin/com/miaiglasses/core/voice/Voice.kt       d06581161bf490d4
+  sdk/core-api/src/main/kotlin/com/miaiglasses/core/voice/Voice.kt       06a70f9e562a5495
   sdk/core-api/src/main/kotlin/com/miaiglasses/core/wear/Wear.kt         321a0775dd7f5ad8
   sdk/core-api/src/main/kotlin/com/miaiglasses/core/wifi/WifiAp.kt       b82d038bf590bafc
-  sdk/core-api/src/main/kotlin/com/miaiglasses/core/wifi/WifiP2p.kt      19852f5a93a1abb8
+  sdk/core-api/src/main/kotlin/com/miaiglasses/core/wifi/WifiP2p.kt      7ae1b311c0401874
   sdk/core-api/src/test/kotlin/com/miaiglasses/core/album/AlbumTest.kt   71721d7aa9a7ee0a
   sdk/core-api/src/test/kotlin/com/miaiglasses/core/interconn/InterconnectionTest.kt 9fb4e3ea303300d2
   sdk/core-api/src/test/kotlin/com/miaiglasses/core/interconn/WearStatusTest.kt d162446f9109b718
@@ -83,7 +83,7 @@ files
   sdk/core-api/src/test/kotlin/com/miaiglasses/core/query/QueryParseTest.kt 1e3021b9cd27923e
   sdk/core-api/src/test/kotlin/com/miaiglasses/core/query/ReportDataTest.kt 93ce399f225e29af
   sdk/core-api/src/test/kotlin/com/miaiglasses/core/system/SystemTimeCodecTest.kt 68184cba8da13bfe
-  sdk/core-api/src/test/kotlin/com/miaiglasses/core/voice/VoiceCodecTest.kt 38da5abff02a46c1
+  sdk/core-api/src/test/kotlin/com/miaiglasses/core/voice/VoiceCodecTest.kt f9e8c968274082e6
   sdk/core-api/src/test/kotlin/com/miaiglasses/core/wifi/WifiP2pTest.kt  5dbcc24f06113287
   sdk/core-proto/build.gradle.kts                                        c2afb3a564558dc1
   sdk/core-proto/src/main/kotlin/com/miaiglasses/core/Crc16Arc.kt        df374f09278d07cd
@@ -94,20 +94,21 @@ files
   sdk/facade/build.gradle.kts                                            1eccc4c74e01e28b
   sdk/facade/consumer-rules.pro                                          9a5c795c92467c4c
   sdk/facade/src/main/AndroidManifest.xml                                1de4d9de55b7c48f
-  sdk/facade/src/main/kotlin/com/miaiglasses/sdk/AlbumClient.kt          0d4c7555a7bf8570
+  sdk/facade/src/main/kotlin/com/miaiglasses/sdk/AlbumClient.kt          266fe37ef040b000
   sdk/facade/src/main/kotlin/com/miaiglasses/sdk/AudioVolume.kt          2667b3a038197e32
   sdk/facade/src/main/kotlin/com/miaiglasses/sdk/CallbackDispatcher.kt   860f20211e175865
   sdk/facade/src/main/kotlin/com/miaiglasses/sdk/CallbackQueue.kt        ed40dab1921a9934
   sdk/facade/src/main/kotlin/com/miaiglasses/sdk/EventDispatcher.kt      46a6b61264795773
   sdk/facade/src/main/kotlin/com/miaiglasses/sdk/GlassesEventSource.kt   fe11e4c762ecf72c
   sdk/facade/src/main/kotlin/com/miaiglasses/sdk/GlassesListener.kt      1bafa4cdf7a3e63f
-  sdk/facade/src/main/kotlin/com/miaiglasses/sdk/GlassesSession.kt       c031fa387ed8d89b
+  sdk/facade/src/main/kotlin/com/miaiglasses/sdk/GlassesSession.kt       8813cba51aa8ae50
   sdk/facade/src/main/kotlin/com/miaiglasses/sdk/P2pGroupOwner.kt        bcb6e42117b679c2
-  sdk/facade/src/main/kotlin/com/miaiglasses/sdk/SendResult.kt           bf92dbf48a5c0d1f
+  sdk/facade/src/main/kotlin/com/miaiglasses/sdk/SendResult.kt           192eceb5a5a54351
   sdk/facade/src/main/kotlin/com/miaiglasses/sdk/SessionOptions.kt       ef82f628aed8c143
   sdk/facade/src/main/kotlin/com/miaiglasses/sdk/SettingWriteResult.kt   c9afee7bf59fcc71
   sdk/facade/src/test/kotlin/com/miaiglasses/sdk/CallbackQueueTest.kt    a85718e6b32ad4a9
-  sdk/facade/src/test/kotlin/com/miaiglasses/sdk/GlassesSessionTest.kt   55fb942590cee261
+  sdk/facade/src/test/kotlin/com/miaiglasses/sdk/GlassesSessionTest.kt   746835d7b626e40e
+  sdk/facade/src/test/kotlin/com/miaiglasses/sdk/SendResultTest.kt       706f3f34007d0fea
   sdk/gradle/wrapper/gradle-wrapper.jar                                  2db75c40782f5e8b
   sdk/gradle/wrapper/gradle-wrapper.properties                           2caec011a749b18a
   sdk/gradle.properties                                                  b7310e43c89c8647
@@ -129,15 +130,17 @@ files
   sdk/transport/src/main/kotlin/com/miaiglasses/transport/AndroidSppLink.kt 036ec24ac2bfd0ac
   sdk/transport/src/main/kotlin/com/miaiglasses/transport/Backoff.kt     87860ec00c43fc5b
   sdk/transport/src/main/kotlin/com/miaiglasses/transport/ConnectGate.kt cafe8d4074d652bc
-  sdk/transport/src/main/kotlin/com/miaiglasses/transport/EnginePump.kt  6518fbf6686414fa
-  sdk/transport/src/main/kotlin/com/miaiglasses/transport/SessionDriver.kt 6b31e4816e051b31
+  sdk/transport/src/main/kotlin/com/miaiglasses/transport/EnginePump.kt  833e2bcc7e72f8b3
+  sdk/transport/src/main/kotlin/com/miaiglasses/transport/RxGapTracker.kt ebe7f8b189dddc56
+  sdk/transport/src/main/kotlin/com/miaiglasses/transport/SessionDriver.kt 4c9cfa8d559a8e12
   sdk/transport/src/main/kotlin/com/miaiglasses/transport/SppLink.kt     e74f08bd97fca604
-  sdk/transport/src/main/kotlin/com/miaiglasses/transport/UptimeClock.kt 26069b1da0fe4a7f
+  sdk/transport/src/main/kotlin/com/miaiglasses/transport/UptimeClock.kt d902726209524c57
   sdk/transport/src/test/kotlin/com/miaiglasses/transport/BackoffTest.kt ba01ec5734ea5e24
   sdk/transport/src/test/kotlin/com/miaiglasses/transport/BondRetryTest.kt 297a24d1cc4e9a42
   sdk/transport/src/test/kotlin/com/miaiglasses/transport/ConnectGateTest.kt e6d0c08c7498f530
-  sdk/transport/src/test/kotlin/com/miaiglasses/transport/EnginePumpTest.kt d8a1c414e9bac64e
-  sdk/transport/src/test/kotlin/com/miaiglasses/transport/SessionDriverTest.kt 1e8c10535102e61c
+  sdk/transport/src/test/kotlin/com/miaiglasses/transport/EnginePumpTest.kt 56d6044bbcabec61
+  sdk/transport/src/test/kotlin/com/miaiglasses/transport/RxGapTrackerTest.kt f98a02d36d8f8c02
+  sdk/transport/src/test/kotlin/com/miaiglasses/transport/SessionDriverTest.kt 40bcde95d86676fc
 
 scope
   - 本清单逐文件校验的只有 sdk/ 与 tests/golden/vectors.txt（上面 files 段）

@@ -1,6 +1,7 @@
 package com.miaiglasses.transport
 
 import java.util.Collections
+import com.miaiglasses.core.sar.Clock
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.test.Test
@@ -8,6 +9,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class EnginePumpTest {
+
+    /** JVM 单测里 `UptimeClock`（`elapsedRealtime()`）是桩值 0，必须给个会走的时钟。 */
+    private val TestClock = Clock { System.nanoTime() / 1_000_000 }
+
 
     /** 把引擎线程停在任务里，之后的入队就是确定的（不会与消费竞争）。 */
     private fun parkedPump(
@@ -18,6 +23,7 @@ class EnginePumpTest {
         val gate = CountDownLatch(1)
         val parked = CountDownLatch(1)
         val pump = EnginePump(
+            clock = TestClock,
             onBytes = onBytes,
             onTick = {},
             onFailure = { throw AssertionError(it) },
@@ -39,7 +45,10 @@ class EnginePumpTest {
         // supervisor 此时正在关链路，跑起来就是往已关闭的链路上写。
         val gate = CountDownLatch(1)
         val parked = CountDownLatch(1)
-        val pump = EnginePump(onBytes = {}, onTick = {}, onFailure = { throw AssertionError(it) }, tickMs = 1_000)
+        val pump = EnginePump(
+            clock = TestClock,
+            onBytes = {}, onTick = {}, onFailure = { throw AssertionError(it) }, tickMs = 1_000,
+        )
         pump.start()
         pump.post {
             parked.countDown()
@@ -111,6 +120,7 @@ class EnginePumpTest {
     @Test
     fun `stop 在引擎线程上执行 beforeExit`() {
         val pump = EnginePump(
+            clock = TestClock,
             onBytes = {},
             onTick = {},
             onFailure = { throw AssertionError(it) },
@@ -125,6 +135,7 @@ class EnginePumpTest {
     @Test
     fun `call 取回结果且充当屏障`() {
         val pump = EnginePump(
+            clock = TestClock,
             onBytes = {},
             onTick = {},
             onFailure = { throw AssertionError(it) },
@@ -143,7 +154,10 @@ class EnginePumpTest {
     fun `call 超时返回 null 且不会把调用方拖死`() {
         val gate = CountDownLatch(1)
         val parked = CountDownLatch(1)
-        val pump = EnginePump(onBytes = {}, onTick = {}, onFailure = { throw AssertionError(it) }, tickMs = 1_000)
+        val pump = EnginePump(
+            clock = TestClock,
+            onBytes = {}, onTick = {}, onFailure = { throw AssertionError(it) }, tickMs = 1_000,
+        )
         pump.start()
         pump.post {
             parked.countDown()
@@ -196,6 +210,7 @@ class EnginePumpTest {
     fun `tick 按周期触发`() {
         val ticks = CountDownLatch(3)
         val pump = EnginePump(
+            clock = TestClock,
             onBytes = {},
             onTick = { ticks.countDown() },
             onFailure = { throw AssertionError(it) },

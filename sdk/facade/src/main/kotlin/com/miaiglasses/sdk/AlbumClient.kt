@@ -163,8 +163,8 @@ public class AlbumClient(
     /**
      * P2P 下**不绑定**网络的用法：直接换个 host 走默认路由试一次。
      *
-     * 参考实现 P2P 分支就是没 bind（`MediaTransManagerViewModel$onP2PConnected` 只在 AP 分支调
-     * `P2P 配置处理.p()`），说明目的地址 `192.168.49.x` 在多数机型上
+     * 参考实现 P2P 分支就是没 bind（参考实现的 P2P 分支只在 AP 模式配置
+     * 网络），说明目的地址 `192.168.49.x` 在多数机型上
      * 能被系统路由到 `p2p0`；不行再用 [bindTo]。
      *
      * @return true 表示默认路由上能读到 `/v1/filelists`

@@ -74,6 +74,9 @@ class SessionDriver(
     @Volatile
     private var link: SppLink? = null
 
+    /** 上一次给 [GlassesEvent.Audio] 盖 `droppedBefore` 时看到的 RX 丢弃计数。 */
+    private val rxGap = RxGapTracker()
+
     private val stopping = java.util.concurrent.atomic.AtomicBoolean(false)
 
     /** 收尾线程句柄，供 [closeAndWait] 等待。 */
@@ -128,13 +131,16 @@ class SessionDriver(
     }
 
     /**
-     * 非阻塞、线程安全。`READY` 之外直接返回 false（**不排队** —— 排队会让宿主
-     * 以为发成功了）。真正的发送在引擎线程上执行，失败通过 `Error` 事件上报。
+     * 同步发送：返回 `ErrorCode.NONE` 表示 **SAR 已受理**（帧进了发送车道），
+     * 其它值是这一帧没发出去的确切原因。
+     *
+     * 早先这里是 `pump.post`（`() -> Unit`），引擎的返回值被丢掉，于是调用方只拿到
+     * 「任务已入队」——车道满 / 超 MPS 这类**当场可知**的失败被报成了成功。
      */
-    fun sendWear(type: Int, id: Int, body: ByteArray): Boolean {
-        if (lastState.get() != SessionState.READY) return false
-        // post 返回 false 说明引擎已停（关闭中/已停），这时说「已排队」是撒谎
-        return pump.post { engine.sendWearPacket(type, id, body) }
+    fun sendWear(type: Int, id: Int, body: ByteArray): Int {
+        if (lastState.get() != SessionState.READY) return ErrorCode.NOT_READY
+        val code = pump.call(syncWaitMs) { engine.sendWearPacket(type, id, body) }
+        return code ?: if (pump.isRunning) ErrorCode.TRANSPORT else ErrorCode.CLOSED
     }
 
     /**
@@ -218,7 +224,7 @@ class SessionDriver(
         if (lastState.get() != SessionState.READY) return false
         return pump.call(goodbyeWaitMs) {
             engine.sendWearPacket(VoiceIds.TYPE, VoiceIds.ID_SYNC_STATUS, VoiceCodec.endVoicePayload())
-        } == true
+        } == ErrorCode.NONE
     }
 
     /**
@@ -321,7 +327,8 @@ class SessionDriver(
         if (lastState.get() != SessionState.READY) return null
         val q = engine.beginWait(type, responseId)
         return try {
-            val sent = pump.call(syncWaitMs) { engine.sendWearPacket(type, id, body) } == true
+            val code = pump.call(syncWaitMs) { engine.sendWearPacket(type, id, body) }
+            val sent = code == ErrorCode.NONE
             if (!sent) null else q.poll(timeoutMs, TimeUnit.MILLISECONDS)
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
@@ -363,8 +370,30 @@ class SessionDriver(
 
     private fun dispatch(event: GlassesEvent) {
         if (event is GlassesEvent.StateChanged) lastState.set(event.state)
-        emit(event)
+        emit(if (event is GlassesEvent.Audio) stamp(event) else event)
     }
+
+    /**
+     * 给语音块盖上「这块之前被 RX 队列丢了多少块」。
+     *
+     * RX 队列在 [EnginePump] 里，引擎看不到它，所以这个字段只能在这一层补：
+     * 溢出丢的是**整块字节**，宿主如果不被告知，听起来就是「随机吞字」，
+     * 而且没有任何办法自证是链路问题还是设备没说话。
+     */
+    private fun stamp(audio: GlassesEvent.Audio): GlassesEvent.Audio {
+        val gap = rxGap.onChunk(pump.droppedRxChunks)
+        return if (gap == audio.droppedBefore) audio
+        else GlassesEvent.Audio(audio.data, audio.seq, audio.timestampMs, gap)
+    }
+
+    /** 因 RX 队列满被丢掉的字节数（宿主可用它判断「音频空洞是不是本端造成的」）。 */
+    val rxDroppedBytes: Long get() = pump.droppedRxBytes
+
+    /** 因 RX 队列满被丢掉的块数。 */
+    val rxDroppedChunks: Long get() = pump.droppedRxChunks
+
+    /** 因世代不符（上一轮 socket 的残留）被丢弃的块数，不计入音频空洞。 */
+    val rxStaleChunks: Long get() = pump.staleRxChunks
 
     private fun supervise() {
         var reachedReadyBefore = false
@@ -430,6 +459,7 @@ class SessionDriver(
 
                 backoff.reset()
                 val epoch = pump.beginRxEpoch()
+                rxGap.reset()   // 新链路：上一轮的 RX 丢弃不该算进这条链路的音频空洞
                 startReader(candidate, epoch)
 
                 reader?.join()

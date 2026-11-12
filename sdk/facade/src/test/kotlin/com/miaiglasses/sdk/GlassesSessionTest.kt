@@ -65,6 +65,8 @@ class GlassesSessionTest {
             tickMs = 10,
         ),
         initialListener = listener,
+        // JVM 单测里 `SystemClock.elapsedRealtime()` 是桩值 0，时间不走 → 超时/退避不会触发
+        clock = com.miaiglasses.core.sar.Clock { System.nanoTime() / 1_000_000 },
     )
 
     @Test

@@ -54,6 +54,9 @@ class EnginePump(
 
     val isAlive: Boolean get() = thread?.isAlive == true
 
+    /** 泵是否还在接收任务。用于把 `call` 返回的 null 区分成「已停」与「写卡住」。 */
+    val isRunning: Boolean get() = running
+
     fun start() {
         if (running) return
         running = true

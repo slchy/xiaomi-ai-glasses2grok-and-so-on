@@ -10,7 +10,7 @@ import com.miaiglasses.core.pb.Pb
  * - `getSystem()` → `设置 P2P(WiFiP2P{ssid, password, frequency, taskId})`
  * - 回包 → `P2P 回执(WiFiP2P.Result{code, ipAddress, taskId})`
  *
- * 语义：**手机自己当 P2P Group Owner**（`P2P 配置处理.startGo()` 里
+ * 语义：**手机自己当 P2P Group Owner**（开启 P2P 组时
  * `WifiP2pConfig.Builder().setNetworkName/setPassphrase/setGroupOperatingFrequency(5745)`
  * 后 `createGroup()`，静默无弹窗），再把这个组的 SSID/密码/信道告诉眼镜，
  * 眼镜作为 **GC**（Group Client）加入，并在回包里报出自己的 P2P IP。
@@ -35,7 +35,7 @@ public object WifiP2pIds {
  * `WiFiP2P.Result`：`id=99` 的回包内容。
  *
  * `code == 0` 且 [ip] 非空才算建组成功 —— 参考实现
- * `P2P 配置处理$enableWiFiP2P$2$2.onSyncSuccess` 就是先取
+ * 参考实现的建组回调就是先取
  * `P2P 回执里的 ipAddress` 再做非空判断，随后把该 IP 当文件服务地址。
  */
 public data class WifiP2pResult(

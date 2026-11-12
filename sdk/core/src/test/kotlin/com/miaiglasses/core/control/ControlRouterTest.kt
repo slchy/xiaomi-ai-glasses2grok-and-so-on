@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * 控制面路由。断言集合与 `原有的 Java 实现`
+ * 控制面路由。断言集合与 `docs/a5a5.md` 规范
  * 对齐 —— 两个实现必须给出同一套判定，否则等于有两份「真相」。
  */
 class ControlRouterTest {

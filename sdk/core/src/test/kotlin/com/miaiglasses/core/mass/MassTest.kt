@@ -225,4 +225,71 @@ class MassTest {
     fun `构造的 END 帧就是设备实际的两字节形态`() {
         assertEquals("0003", com.miaiglasses.core.Hex.encode(MassCodec.buildEnd()))
     }
+
+    // ---------------------------------------------------------------- 流边界与超时
+
+    @Test
+    fun `同总长的下一条流必须重新开始 - 不得拼接`() {
+        // 回归护栏：边界曾经只看「声明总长变了」。上一条被截断（只收到 10/20 字节），
+        // 下一条声明了**相同**总长 ⇒ 不 reset ⇒ 两段字节首尾相接 ⇒ size>=20 提前判完成
+        // ⇒ 交付一张损坏的 JPEG（首尾拼在一起）。
+        val a = MassAssembler()
+        a.feed(MassCodec.buildData(MassType.FIRST_IMAGE, 20, ByteArray(10) { 0x11 }))
+        assertEquals(10, a.imageSize)
+
+        // 第二条流：同样的总长 20，自己的内容全 0x22
+        val delivered = a.feed(MassCodec.buildData(MassType.FIRST_IMAGE, 20, ByteArray(10) { 0x22 }))
+        assertTrue(!delivered, "刚收到 10 字节，不该判完成")
+        assertEquals(10, a.imageSize, "必须只剩新流的 10 字节，不能是 20")
+        assertEquals(0x22.toByte(), a.imageBytes()[0], "首字节应属于新流")
+
+        assertTrue(a.feed(MassCodec.buildData(MassType.FOLLOW_IMAGE, 0, ByteArray(10) { 0x33 })))
+        val bytes = a.imageBytes()
+        assertEquals(20, bytes.size)
+        assertEquals(0x22.toByte(), bytes[0], "前半属于新流")
+        assertEquals(0x33.toByte(), bytes[10], "后半属于新流")
+        assertEquals(1, a.droppedIncompleteCount, "被截断的上一条要被计数")
+        assertEquals(10, a.lastDroppedImageSize)
+    }
+
+    @Test
+    fun `上一张已完成时同总长的下一张也必须交付`() {
+        // 同一个根因的第二种症状：完成之后 imageComplete 一直为真，
+        // 同总长的下一张既不 reset 也不会再交付 —— 第二张图凭空消失。
+        val a = MassAssembler()
+        assertTrue(a.feed(MassCodec.buildData(MassType.FIRST_IMAGE, 10, ByteArray(10))))
+        assertTrue(a.isImageComplete, "第一张应完成")
+
+        val second = a.feed(MassCodec.buildData(MassType.FIRST_IMAGE, 10, ByteArray(10) { 0x55 }))
+        assertTrue(second, "第二张同样要交付，实际被吞了")
+        assertEquals(0x55.toByte(), a.imageBytes()[0], "交付的是第二张的内容")
+    }
+
+    @Test
+    fun `图片流空闲超时丢弃半成品并计数`() {
+        val a = MassAssembler(imageIdleTimeoutMs = 1_000)
+        a.tick(0)
+        a.feed(MassCodec.buildData(MassType.FIRST_IMAGE, 999, ByteArray(10)))
+
+        assertTrue(!a.tick(500), "还没到 15 s（这里 1 s），不能丢")
+        assertEquals(10, a.imageSize)
+
+        assertTrue(a.tick(1_500), "超时后应丢弃")
+        assertEquals(0, a.imageSize)
+        assertEquals(1, a.droppedByTimeoutCount)
+        assertEquals(10, a.lastDroppedImageSize)
+        assertEquals(999, a.lastDroppedDeclaredTotal)
+        assertTrue(!a.isImageComplete)
+    }
+
+    @Test
+    fun `超时不碰已完成或空的图片`() {
+        val a = MassAssembler(imageIdleTimeoutMs = 1_000)
+        assertTrue(!a.tick(5_000), "没有半成品时什么都不做")
+
+        a.feed(MassCodec.buildData(MassType.FIRST_IMAGE, 10, ByteArray(10)))
+        assertTrue(a.isImageComplete)
+        assertTrue(!a.tick(99_000), "已完成的图不该被超时清掉")
+        assertEquals(10, a.imageSize)
+    }
 }

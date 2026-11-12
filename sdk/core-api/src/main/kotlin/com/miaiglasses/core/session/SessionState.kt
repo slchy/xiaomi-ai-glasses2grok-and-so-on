@@ -34,9 +34,27 @@ public sealed interface GlassesEvent {
 
     public data class StateChanged(val state: SessionState, val reason: String = "") : GlassesEvent
 
-    /** 上行语音：mSBC 原始字节（57 字节/帧），**未解码**。 */
-    public class Audio(public val data: ByteArray) : GlassesEvent {
-        override fun toString(): String = "Audio(${data.size}B)"
+    /**
+     * 上行语音：一个 MASS 载荷块，**mSBC 原始字节，未解码**。
+     *
+     * 一帧的典型长度是 582 字节 = **10 × 57 字节 mSBC 帧**（7.5 ms/帧 ⇒ 75 ms）。
+     * 早先这里写「57 字节/帧」，把「mSBC 帧」和「MASS 块」混成了一件事。
+     *
+     * MASS 头里**没有序号也没有时间戳**（见 `Mass`），所以下面两个字段是本端生成的：
+     * @property seq 本会话内语音块序号，从 0 开始连续自增。跳号 = 本端漏了一次回调。
+     * @property timestampMs 到达时刻（引擎时钟，毫秒；生产环境中是 `CLOCK_BOOTTIME`）。
+     * @property droppedBefore 这块之前有多少块因 **RX 队列溢出**被丢（0 = 连续）。
+     *   `> 0` 就说明音频流在这里有真实的空洞 —— ASR 侧应按 `timestampMs` 的间隔判断，
+     *   不能假设块与块之间无缝。
+     */
+    public class Audio(
+        public val data: ByteArray,
+        public val seq: Long = 0,
+        public val timestampMs: Long = 0,
+        public val droppedBefore: Long = 0,
+    ) : GlassesEvent {
+        override fun toString(): String =
+            "Audio(${data.size}B seq=$seq t=$timestampMs droppedBefore=$droppedBefore)"
     }
 
     /** 一张完整的 JPEG（FIRST + FOLLOW 已拼接）。 */
@@ -146,7 +164,7 @@ public sealed interface GlassesEvent {
      *
      * `type`：1 = 设备日志、2 = 统计、3 = dump 日志；`status`：0 = 成功、1 = 无数据、
      * 2 = 直传 URL、3 = 忙、10 = 失败。参考实现每 1 小时自动发一次 `id=80`
-     * （`文件处理` 的 `PeriodicWorkOneHourReport`）。
+     * 。
      */
     public class ReportDataReceived(public val result: com.miaiglasses.core.query.ReportDataResult) : GlassesEvent {
         override fun toString(): String = "ReportDataReceived(type=${result.type}, status=${result.status})"

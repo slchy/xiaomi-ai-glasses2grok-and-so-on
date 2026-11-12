@@ -9,7 +9,7 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * 密码学原语。移植自 `原有的 Java 实现`。
+ * 密码学原语。依据 `docs/a5a5.md` 规范实现，与真机行为逐字节比对一致。
  *
  * 协议要点（`SPP-CRYPTO-SOLVED.md`）：
  * - 数据帧：**AES-CTR**，`key == iv`，每帧 counter 从 0 重置，无 tag

@@ -101,6 +101,7 @@ public class GlassesSession internal constructor(
             token16: ByteArray,
             options: SessionOptions,
             initialListener: GlassesListener? = null,
+            clock: com.miaiglasses.core.sar.Clock = com.miaiglasses.transport.UptimeClock,
         ): GlassesSession {
             require(token16.size == TOKEN_SIZE) {
                 "token16 必须是 $TOKEN_SIZE 字节，实际 ${token16.size}"
@@ -114,6 +115,7 @@ public class GlassesSession internal constructor(
                 token16 = token16.copyOf(), // 拷贝：宿主返回后即可复用/清零原数组
                 model = android.os.Build.MODEL ?: "unknown",
                 locale = Locale.getDefault().toString(),
+                clock = clock,
                 tickMs = options.tickMs,
                 connectTimeoutMs = options.connectTimeoutMs,
                 maxConnectAttempts = options.maxConnectAttempts,
@@ -151,6 +153,19 @@ public class GlassesSession internal constructor(
      * 终态 `CLOSED` 永远不会被丢。
      */
     public val callbackDrops: Long get() = dispatcher.dropped
+
+    /**
+     * RX 队列溢出丢掉的**块数** / 字节数。
+     *
+     * 溢出丢弃发生在解析之前，表现为「音频整块消失、图片缺分片」。宿主拿它与
+     * `GlassesEvent.Audio.droppedBefore` 对账：若这里在涨而语音块不连续，
+     * 空洞是本端造成的，不是设备没说话。
+     */
+    public val rxDroppedChunks: Long get() = driver.rxDroppedChunks
+    public val rxDroppedBytes: Long get() = driver.rxDroppedBytes
+
+    /** 上一轮 socket 的残留字节被丢弃的块数（换链路时的正常现象，不算音频空洞）。 */
+    public val rxStaleChunks: Long get() = driver.rxStaleChunks
 
     private val rawSends = java.util.concurrent.atomic.AtomicLong()
 
@@ -202,11 +217,7 @@ public class GlassesSession internal constructor(
     /** 具名能力的公共发送路径（**不计入** [rawSendCount]）。 */
     private fun sendWearInternal(type: Int, id: Int, payload: ByteArray): SendResult {
         if (closed.get()) return SendResult.Rejected(SdkErrorCode.CLOSED, "会话已关闭")
-        return if (driver.sendWear(type, id, payload)) {
-            SendResult.Queued
-        } else {
-            SendResult.Rejected(SdkErrorCode.NOT_READY, "未就绪（当前 ${driver.state}）")
-        }
+        return sendResultOf(driver.sendWear(type, id, payload))
     }
 
     /**
@@ -373,7 +384,7 @@ public class GlassesSession internal constructor(
     /**
      * 基础状态上报：`System id=80 ReportData`，空载荷。
      *
-     * 参考实现每 1 小时自动发一次（`文件处理` 的 `PeriodicWorkOneHourReport`）；
+     * 参考实现每 1 小时自动发一次；
      * 回包是 `System.f51 ReportData.Result{type, status}`，从 `GlassesEvent.ReportDataReceived` 拿。
      * 阻塞等回包用 [requestReportDataAndWait]。
      */

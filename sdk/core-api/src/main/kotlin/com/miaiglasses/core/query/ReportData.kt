@@ -8,7 +8,7 @@ import com.miaiglasses.core.pb.Pb
  * 参考实现：
  * - `命令实现类 = 0x50`(80)，`getSystem()` 返回**空** `System{}`
  * - 回包 `System.f51 = ReportData.Result{ f1 type, f2 status }`
- * - `文件处理` 用 `PeriodicWorkOneHourReport` 每 **1 小时**触发一次
+ * - 参考实现每 **1 小时**触发一次
  *
  * `System.f50 = ReportData{ f1 type, f2 id, f3 repeated Part{ f1 type, f2 url } }`
  * 是手机侧可选的详细载荷（`Part.url` 用来指定上传地址）；我们只发空载荷，

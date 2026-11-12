@@ -6,19 +6,25 @@ import java.io.ByteArrayOutputStream
 /**
  * 把 `ch=3` 的 MASS 帧重组为两条流：图片与语音。
  *
- * 这是 `原有的 Java 实现` 的移植，修正了它在长连接上的
+ * 依据 `docs/a5a5.md` 规范实现，与真机行为逐字节比对一致；修正了它在长连接上的
  * 两个结构问题：
  *
  * 1. **原实现一个实例只服务一次唤醒**，靠调用方 `beginTransaction()` 手工重置；
- *    这里拆成 [reset] 由会话层在「新一轮唤醒」时调用，漏调不会产出拼接损坏的图片
- *    （因为 `firstImage` 会因 `total` 变化而被识别为新流，见 [feed]）。
+ *    这里拆成 [reset] 由会话层在「新一轮唤醒」时调用。
  * 2. **超限只停吃、继续计帧** —— 调用方需要知道设备还在推，而不是静默失联。
+ *
+ * 图片流的边界靠**协议里现成的 `MassType.FIRST_IMAGE`** 判定，不再只看「声明总长变了」：
+ * 只看总长会漏两种情形 —— 上一条被截断、下一条声明了**相同**总长时字节首尾相接，
+ * 提前触发 `>=` 交付一张损坏的 JPEG；上一条正常完成后，同总长的下一张永远不交付。
+ * 另外 [tick] 提供空闲超时，避免截断流长期占着缓冲。
  *
  * 语音（mSBC）与图片（JPEG）**都不解码**，原样交给宿主。
  */
 internal class MassAssembler(
     private val maxImageBytes: Int = DEFAULT_MAX_IMAGE_BYTES,
     private val maxVoiceBytes: Int = DEFAULT_MAX_VOICE_BYTES,
+    /** 图片流空闲多久后丢弃半成品（对齐参考实现 15 s 定时器）。 */
+    private val imageIdleTimeoutMs: Long = IMAGE_IDLE_TIMEOUT_MS,
 ) {
     companion object {
         const val MSBC_FRAME_BYTES = GlassesProtocol.Mass.MSBC_FRAME_BYTES
@@ -29,6 +35,9 @@ internal class MassAssembler(
 
         /** 4 MB ≈ 8.7 分钟 mSBC，远超单次唤醒的合理长度。 */
         const val DEFAULT_MAX_VOICE_BYTES = 4 shl 20
+
+        /** 参考实现的 15 s 丢弃定时器，这里改成 tick 驱动的空闲超时。 */
+        const val IMAGE_IDLE_TIMEOUT_MS = 15_000L
     }
 
     private val image = ByteArrayOutputStream()
@@ -69,6 +78,16 @@ internal class MassAssembler(
     var lastDroppedDeclaredTotal: Int = 0
         private set
 
+    /** 最近一次图片帧的到达时刻（引擎时钟）；null = 还没收到过。 */
+    private var lastImageAtMs: Long? = null
+
+    /** 引擎 tick 推进的当前时刻（毫秒）。从未 tick 过时为 0 —— 此时不做超时判定。 */
+    private var nowMs: Long = 0
+
+    /** 因空闲超时被丢弃的半成品数量（与「新流覆盖」分开计，便于区分是哪种丢法）。 */
+    var droppedByTimeoutCount: Int = 0
+        private set
+
     /**
      * 语音增量回调：每收到一帧语音就交出**该帧的载荷副本**。
      *
@@ -102,20 +121,23 @@ internal class MassAssembler(
         }
 
         if (m.isImage) {
-            if (m.total > 0) {
-                // 总长变化 ⇒ 设备开始了一条新图片流。上一条若没凑满声明总长，
-                // 在这里被丢弃（参考实现用 15 s 定时器丢，等价效果）。
-                if (declaredImageBytes != 0 && m.total != declaredImageBytes) {
-                    if (!imageComplete && image.size() > 0) {
-                        droppedIncompleteCount++
-                        lastDroppedImageSize = image.size()
-                        lastDroppedDeclaredTotal = declaredImageBytes
-                    }
-                    image.reset()
-                    imageComplete = false
+            // 新流的判据有两条，**任一条成立**就重置：
+            //  1. `FIRST_IMAGE` —— 协议里「这张图第一片」的结构标记（唯一可靠的那个）
+            //  2. 声明总长变了 —— 设备没发 FIRST 时的兜底
+            // 只靠 2 会在「同总长的两条流」上把两段字节拼在一起，交付损坏的 JPEG。
+            val newStream = m.massType == MassType.FIRST_IMAGE ||
+                (m.total > 0 && declaredImageBytes != 0 && m.total != declaredImageBytes)
+            if (newStream) {
+                if (!imageComplete && image.size() > 0) {
+                    droppedIncompleteCount++
+                    lastDroppedImageSize = image.size()
+                    lastDroppedDeclaredTotal = declaredImageBytes
                 }
-                declaredImageBytes = m.total
+                image.reset()
+                imageComplete = false
+                imageTruncated = false
             }
+            if (m.total > 0) declaredImageBytes = m.total
             if (m.payloadLen > 0) {
                 if (image.size() + m.payloadLen > maxImageBytes) {
                     imageTruncated = true
@@ -123,6 +145,7 @@ internal class MassAssembler(
                     image.write(body, m.payloadOff, m.payloadLen)
                 }
             }
+            lastImageAtMs = nowMs
             imageFrames++
             if (!imageComplete && declaredImageBytes > 0 && image.size() >= declaredImageBytes) {
                 imageComplete = true
@@ -152,6 +175,32 @@ internal class MassAssembler(
         declaredImageBytes = 0
         imageComplete = false
         imageTruncated = false
+        lastImageAtMs = null
+    }
+
+    /**
+     * 引擎每次 tick 调一次：给装配器一个时间基准，并做图片流**空闲超时**。
+     *
+     * 补上「同总长串流」之外的另一条丢弃路径：被截断的流如果设备再也不发下一张图，
+     * 单靠 `FIRST_IMAGE` 边界永远等不到，缓冲会一直占着（最多 8 MB）且
+     * `declaredTotal` 一直是上一条的陈旧值。
+     *
+     * @return `true` 表示这一次 tick 丢掉了一个半成品（调用方可用于日志）。
+     */
+    fun tick(currentMs: Long): Boolean {
+        nowMs = currentMs
+        if (imageIdleTimeoutMs <= 0) return false
+        if (imageComplete || image.size() == 0) return false
+        val last = lastImageAtMs ?: return false
+        if (currentMs - last < imageIdleTimeoutMs) return false
+        droppedByTimeoutCount++
+        lastDroppedImageSize = image.size()
+        lastDroppedDeclaredTotal = declaredImageBytes
+        image.reset()
+        imageComplete = false
+        imageTruncated = false
+        lastImageAtMs = null
+        return true
     }
 
     /**
@@ -171,6 +220,7 @@ internal class MassAssembler(
         imageTruncated = false
         voiceTruncated = false
         lastFrame = null
+        lastImageAtMs = null
     }
 
     val isImageComplete: Boolean get() = imageComplete

@@ -59,6 +59,9 @@ public class SessionEngine(
 
     private val assembler = MassAssembler()
 
+    /** 本会话语音块序号（MASS 头无 seq，这是本端计数，见 [GlassesEvent.Audio]）。 */
+    private var voiceSeq: Long = 0
+
     /** `L2 ch=2` 上的文件分片（`Media 17/18` 的响应）。 */
     private val massFileAssembler = com.miaiglasses.core.mass.MassFileAssembler()
     private val handshake: HandshakeDriver
@@ -98,7 +101,11 @@ public class SessionEngine(
             )
         }
 
-        assembler.onVoiceChunk = { chunk -> emit(GlassesEvent.Audio(chunk)) }
+        assembler.onVoiceChunk = { chunk ->
+            // 序号与时间戳只能本端生成：MASS 头里两者都没有（见 `Mass` 的 12 字节头）。
+            // 宿主的 ASR/AEC 需要它们判断「这串音频是不是连续的」。
+            emit(GlassesEvent.Audio(chunk, voiceSeq++, clock.nowMs()))
+        }
     }
 
     /**
@@ -168,6 +175,7 @@ public class SessionEngine(
             handshake.tick()
             advanceHandshake()
             sar.tick()
+            assembler.tick(clock.nowMs())   // 图片流空闲超时（对齐参考实现 15 s 定时器）
             if (diagnostics) reportStall()
         } catch (e: TransportWriteException) {
             onTransportFailure(e)
@@ -207,37 +215,54 @@ public class SessionEngine(
     /**
      * 发一条业务命令（自动加密）。
      *
-     * @return false 表示当前状态不允许发送（未 READY，或 SAR 前置检查拒绝）
+     * @return [ErrorCode.NONE] 表示**已受理**（帧进了发送车道）；其它值说明这一帧根本没发出去，
+     *   调用方**不必**等异步 `Error` 事件才知道失败。
+     *
+     * 早先这里是 `Boolean`，而 `:transport` 用 `pump.post` 投递（`() -> Unit`），返回值被丢掉，
+     * 于是「车道满 / 超过远端 MPS / 引擎已停」全部对外表现为成功 —— 公开 API 的
+     * `SendResult.Queued` 因此名不副实。现在把原因一路带上去。
      */
-    public fun sendWearPacket(type: Int, id: Int, body: ByteArray): Boolean {
+    public fun sendWearPacket(type: Int, id: Int, body: ByteArray): Int {
         if (state != SessionState.READY) {
             emit(GlassesEvent.Error(ErrorCode.NOT_READY, "未就绪（当前 ${state.name}），请等待 READY 后重试"))
-            return false
+            return ErrorCode.NOT_READY
         }
         if (keys == null) {
             // READY 但拿不到密钥属于内部不一致，按业务错误上报，不能当成链路故障
             emit(GlassesEvent.Error(ErrorCode.PROTOCOL, "会话密钥缺失，请重新连接"))
-            return false
+            return ErrorCode.PROTOCOL
         }
         return try {
-            sendWear(type, id, body, encrypted = true)
+            if (sendWear(type, id, body, encrypted = true)) ErrorCode.NONE else sendRejectCode()
         } catch (e: TransportWriteException) {
             onTransportFailure(e)
-            false
+            ErrorCode.TRANSPORT
         }
     }
 
+    /**
+     * [sendWear] 返回 false 时读 SAR 的拒绝原因。
+     *
+     * 必须**紧跟着** `sendWear` 在同一次调用里读（这里是引擎线程），否则下一次发送
+     * 会把 [SarEngine.lastRejectCode] 覆盖掉。
+     */
+    private fun sendRejectCode(): Int = when (sar.lastRejectCode) {
+        SarResult.QUEUE_FULL -> ErrorCode.QUEUE_FULL
+        else -> ErrorCode.PROTOCOL          // 空载荷 / 超过远端 MPS，都不该悄悄成功
+    }
+
     /** 读佩戴状态：`System`(2) `GetWearStatus`(93)，空 payload。 */
-    public fun requestWearStatus(): Boolean = sendWearPacket(TYPE_SYSTEM, ID_GET_WEAR_STATUS, ByteArray(0))
+    public fun requestWearStatus(): Boolean =
+        sendWearPacket(TYPE_SYSTEM, ID_GET_WEAR_STATUS, ByteArray(0)) == ErrorCode.NONE
 
     /**
      * 基础状态上报：`System id=80 ReportData`，载荷是**空的** `System{}`（参考实现同款）。
      *
      * 回包 `System.f51 = ReportData.Result{type, status}`；参考实现每 1 小时自动发一次
-     * （`文件处理` 的 `PeriodicWorkOneHourReport`）。
+     * 。
      */
     public fun requestReportData(): Boolean =
-        sendWearPacket(TYPE_SYSTEM, com.miaiglasses.core.query.ReportDataIds.ID_REQUEST, ByteArray(0))
+        sendWearPacket(TYPE_SYSTEM, com.miaiglasses.core.query.ReportDataIds.ID_REQUEST, ByteArray(0)) == ErrorCode.NONE
 
     /**
      * 打开眼镜热点：`System id=88 EnableWiFiAP`，payload 是**空的** `System`。
@@ -245,13 +270,15 @@ public class SessionEngine(
      * 参考实现就是这么发的；热点起来后
      * `wifiConfig()`（`id=86`）给的 SSID/PSK 才能用，HTTP 8080 也才可达。
      */
-    public fun enableWifiAp(): Boolean = sendWearPacket(TYPE_SYSTEM, WifiApIds.ID_ENABLE, ByteArray(0))
+    public fun enableWifiAp(): Boolean =
+        sendWearPacket(TYPE_SYSTEM, WifiApIds.ID_ENABLE, ByteArray(0)) == ErrorCode.NONE
 
     /**
      * 关闭眼镜热点：`System id=89 DisableWiFiAP`，payload `f57 WiFiAP{ssid, password, gateway}`。
      */
     public fun disableWifiAp(ssid: String, password: String, gateway: String): Boolean =
-        sendWearPacket(TYPE_SYSTEM, WifiApIds.ID_DISABLE, WifiApCodec.disablePayload(ssid, password, gateway))
+        sendWearPacket(TYPE_SYSTEM, WifiApIds.ID_DISABLE, WifiApCodec.disablePayload(ssid, password, gateway)) ==
+            ErrorCode.NONE
 
     /**
      * 让**眼镜作为 P2P Group Client** 加入一个由手机自己建的 Wi-Fi Direct 组：     * `System id=99 EnableWiFiP2PGC`，载荷 `f65 WiFiP2P{ssid, password, frequency, taskId}`。
@@ -270,7 +297,7 @@ public class SessionEngine(
             TYPE_SYSTEM,
             com.miaiglasses.core.wifi.WifiP2pIds.ID_ENABLE_P2P_GC,
             com.miaiglasses.core.wifi.WifiP2pCodec.enablePayload(ssid, password, frequency, taskId),
-        )
+        ) == ErrorCode.NONE
 
     /**
      * 写 WiFi 配置：`System id=56 SetWiFIConfig`（`f32 WiFiConfig{basicInfo, pskInfo}`）。
@@ -285,7 +312,7 @@ public class SessionEngine(
             TYPE_SYSTEM,
             WifiApCodec.ID_SET_WIFI_CONFIG,
             WifiApCodec.setConfigPayload(ssid, password, authMode, frequency),
-        )
+        ) == ErrorCode.NONE
 
     // ------------------------------------------------------------ 拍照
 
@@ -329,7 +356,7 @@ public class SessionEngine(
             TYPE_VOICE,
             com.miaiglasses.core.voice.VoiceIds.ID_MULTIMODAL,
             com.miaiglasses.core.voice.VoiceCodec.buildMultiModel(transactionId, requestId, salt),
-        )
+        ) == ErrorCode.NONE
 
     // ------------------------------------------------------------ 请求-响应
 
@@ -358,7 +385,7 @@ public class SessionEngine(
 
     /** 查询直播状态：`Interconnection`(23) `id=45`。回复里带眼镜热点 SSID/密码。 */
     public fun queryLiveStream(): Boolean =
-        sendWearPacket(LiveStreaming.TYPE, LiveStreaming.ID_QUERY, LiveStreaming.queryPayload())
+        sendWearPacket(LiveStreaming.TYPE, LiveStreaming.ID_QUERY, LiveStreaming.queryPayload()) == ErrorCode.NONE
 
     /**
      * 开始推流：`Interconnection`(23) `id=46`。
@@ -377,11 +404,11 @@ public class SessionEngine(
         LiveStreaming.TYPE,
         LiveStreaming.ID_REQUEST,
         LiveStreaming.startPayload(url, resolution, fps, streamMode, mode),
-    )
+    ) == ErrorCode.NONE
 
     /** 停止推流：`Interconnection`(23) `id=46`，`f34 { f1 = 2 }`。 */
     public fun stopLive(): Boolean =
-        sendWearPacket(LiveStreaming.TYPE, LiveStreaming.ID_REQUEST, LiveStreaming.stopPayload())
+        sendWearPacket(LiveStreaming.TYPE, LiveStreaming.ID_REQUEST, LiveStreaming.stopPayload()) == ErrorCode.NONE
 
     /**
      * 录音开关：`Media`(18) `id=20 RequestRecord`，载荷 `Media{f17 = RecordRequest{type, action}}`。
@@ -395,7 +422,7 @@ public class SessionEngine(
             com.miaiglasses.core.media.RecordIds.TYPE,
             com.miaiglasses.core.media.RecordIds.ID_REQUEST_RECORD,
             com.miaiglasses.core.media.RecordCodec.requestPayload(type, action),
-        )
+        ) == ErrorCode.NONE
 
     /**
      * `Media id=17 RequestMediaFile`：按 identifier 向眼镜要一个文件。
@@ -408,7 +435,7 @@ public class SessionEngine(
             TYPE_MEDIA,
             com.miaiglasses.core.media.MediaFileIds.ID_REQUEST_FILE,
             com.miaiglasses.core.media.MediaFileCodec.requestFilePayload(identifier, thumbnail),
-        )
+        ) == ErrorCode.NONE
 
     /** `Media id=18 RequestMediaFileList`：一次要多个文件（同 [requestMediaFile] 的语义）。 */
     public fun requestMediaFileList(identifiers: List<String>, thumbnail: Boolean = true): Boolean =
@@ -416,7 +443,7 @@ public class SessionEngine(
             TYPE_MEDIA,
             com.miaiglasses.core.media.MediaFileIds.ID_REQUEST_FILE_LIST,
             com.miaiglasses.core.media.MediaFileCodec.requestFileListPayload(identifiers, thumbnail),
-        )
+        ) == ErrorCode.NONE
 
     /** `Media id=19 ConfirmMediaFile`：告诉眼镜「这个文件我收到了」。 */
     public fun confirmMediaFile(identifier: String): Boolean =
@@ -424,7 +451,7 @@ public class SessionEngine(
             TYPE_MEDIA,
             com.miaiglasses.core.media.MediaFileIds.ID_CONFIRM_FILE,
             com.miaiglasses.core.media.MediaFileCodec.confirmPayload(identifier),
-        )
+        ) == ErrorCode.NONE
 
     public fun close() {
         if (state == SessionState.CLOSED || state == SessionState.CLOSING) return
@@ -487,7 +514,7 @@ public class SessionEngine(
             sar.sendData(L2.CH_PB, L2.OP_WRITE, wear)
         }
         // sar.sendData 在「payload 为空」「payload+2 > MPS」「车道配额满」三种情况下返回 null，
-        // 帧根本不会发出去。丢掉这个返回值就等于把失败报成成功（上层会看到 Queued）。
+        // 帧根本不会发出去。这个返回值必须一路上报到公开 API，否则宿主会看到 Queued。
         if (sent == null) {
             // 车道满已经由 sar.onQueueFull 报过一条 QUEUE_FULL，这里不重复报
             if (sar.lastRejectCode != SarResult.QUEUE_FULL) {
@@ -729,12 +756,23 @@ public class SessionEngine(
         keys = null
     }
 
-    /** 握手失败归类：验签失败是 token 问题，*超时是超时，其余按协议/契约不符。 */
+    /**
+     * 握手失败归类。
+     *
+     * 三分法（语义，不只是数字）：
+     * - `108` **token 问题**：设备签名对不上，重试无意义；
+     * - `208` **瞬时**：没等到应答（超时 / 报文缺失），重开一次可能就好；
+     * - `202` 其余契约/协议不符。
+     *
+     * 会话在这三种情况下都是终态 `FAILED`（不自作主张重连，见 `ErrorCode.HANDSHAKE_TRANSIENT`
+     * 的说明），但宿主可以凭码决定「换 token」还是「退避重试」。
+     */
     private fun handshakeErrorCode(failure: HandshakeDriver.Failure?): Int = when (failure) {
         HandshakeDriver.Failure.NegotiateTimeout,
         HandshakeDriver.Failure.VerifyTimeout,
         HandshakeDriver.Failure.ConfirmTimeout,
-        -> ErrorCode.TIMEOUT
+        HandshakeDriver.Failure.NoDeviceVerify,
+        -> ErrorCode.HANDSHAKE_TRANSIENT
 
         HandshakeDriver.Failure.BadDeviceSign -> ErrorCode.AUTH_FAILED_TOKEN_INVALID
         else -> ErrorCode.PROTOCOL

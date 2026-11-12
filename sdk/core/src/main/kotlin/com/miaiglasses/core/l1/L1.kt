@@ -69,7 +69,7 @@ internal class L1Frame(
     override fun toString(): String = "$typeName(seq=$seq, frx=$frx, len=${payload.size})"
 }
 
-/** L1 帧构造。与 `参考实现` / `原有的 Java 实现` 逐字节一致。 */
+/** L1 帧构造。与 `docs/a5a5.md` 规范逐字节一致。 */
 internal object L1Codec {
 
     fun build(

@@ -311,6 +311,29 @@ class SessionEngineTest {
     }
 
     @Test
+    fun `语音块带本端序号与到达时刻 - MASS 头里没有这两个字段`() {
+        // 宿主做 ASR/AEC 时需要知道「这块是第几块、什么时候到的」。
+        // MASS 12 字节头里既没有 seq 也没有时间戳，只能由 SDK 生成 —— 这条钉住它真的生成了。
+        val r = Rig(token)
+        r.engine.onConnected()
+        r.engine.tick()
+        r.settle()
+
+        repeat(3) { r.dev.sendMass(MassCodec.buildData(MassType.FOLLOW_VOICE, 0, ByteArray(57) { it.toByte() })) }
+        r.settle()
+
+        val audio = r.events.filterIsInstance<GlassesEvent.Audio>()
+        assertEquals(3, audio.size)
+        assertEquals(listOf(0L, 1L, 2L), audio.map { it.seq }, "序号必须从 0 连续自增")
+        assertTrue(audio.all { it.timestampMs > 0 }, "时间戳必须是真实时钟值：${audio.map { it.timestampMs }}")
+        assertTrue(
+            audio.zipWithNext().all { (a, b) -> b.timestampMs >= a.timestampMs },
+            "时间戳不得回退：${audio.map { it.timestampMs }}",
+        )
+        assertTrue(audio.all { it.droppedBefore == 0L }, "引擎侧不该凭空报空洞（那是 transport 补的）")
+    }
+
+    @Test
     fun `图片按声明总长拼接后一次性交付`() {
         val r = Rig(token)
         r.engine.onConnected()
@@ -334,7 +357,7 @@ class SessionEngineTest {
     fun `READY 之前发送被拒绝且不产生帧`() {
         val r = Rig(token)
         r.engine.onConnected()
-        assertTrue(!r.engine.sendWearPacket(2, 93, ByteArray(0)))
+        assertEquals(ErrorCode.NOT_READY, r.engine.sendWearPacket(2, 93, ByteArray(0)))
         assertTrue(r.errors().any { it.contains("未就绪") })
     }
 
@@ -352,6 +375,22 @@ class SessionEngineTest {
         assertEquals(SessionState.FAILED, r.state())
         assertTrue(r.errors().any { it.contains("超时") })
         assertEquals(null, r.engine.keys, "失败后不得残留会话密钥")
+    }
+
+    @Test
+    fun `握手超时用可重试码 208 - 与 token 永久错的 108 分开`() {
+        // 两种失败都是终态 FAILED，但语义不同：超时重开一次可能就好，验签失败换多少次都一样。
+        // 宿主靠码区分要不要引导用户重新绑定 —— 之前两者共用 TIMEOUT/PROTOCOL 混在一起。
+        val r = Rig(token)
+        r.dev.replyToAppVerify = false
+        r.engine.onConnected()
+        r.engine.tick()
+        r.clock.advance(20_000)
+        r.engine.tick()
+
+        val e = r.events.filterIsInstance<GlassesEvent.Error>().last()
+        assertEquals(ErrorCode.HANDSHAKE_TRANSIENT, e.code, "超时必须是 208（可重试），实际 ${e.message}")
+        assertEquals(SessionState.FAILED, r.state(), "仍然是终态：不自作主张重连")
     }
 
     @Test
@@ -575,7 +614,7 @@ class SessionEngineTest {
 
         val before = r.events.size
         val huge = ByteArray(100_000) { 0x41 } // 远超任何 MPS（L1 帧上限才 64 KB）
-        assertTrue(!r.engine.sendWearPacket(2, 100, huge), "帧没发出去就不能返回成功")
+        assertEquals(ErrorCode.PROTOCOL, r.engine.sendWearPacket(2, 100, huge), "帧没发出去就不能返回成功")
         assertTrue(
             r.events.drop(before).filterIsInstance<GlassesEvent.Error>().any { it.message.contains("MPS") },
             "必须报错说明是载荷过大；实际新增事件=${r.events.drop(before)}",
@@ -614,7 +653,7 @@ class SessionEngineTest {
     @Test
     fun `未 READY 时发命令报 NOT_READY 204`() {
         val r = Rig(token)
-        assertTrue(!r.engine.sendWearPacket(2, 93, ByteArray(0)))
+        assertEquals(ErrorCode.NOT_READY, r.engine.sendWearPacket(2, 93, ByteArray(0)))
         val e = r.events.filterIsInstance<GlassesEvent.Error>().last()
         assertEquals(ErrorCode.NOT_READY, e.code, "未就绪必须是 204，而不是只有一句字符串")
     }
@@ -628,8 +667,14 @@ class SessionEngineTest {
         assertEquals(SessionState.READY, r.state())
 
         // 不 settle ⇒ 假设备不回 ACK ⇒ 队列只进不出
-        repeat(GlassesOptions.CONTROL_LANE_CAPACITY) { r.engine.sendWearPacket(2, 93, ByteArray(0)) }
-        assertTrue(!r.engine.sendWearPacket(2, 93, ByteArray(0)), "第 257 条必须被拒")
+        repeat(GlassesOptions.CONTROL_LANE_CAPACITY) {
+            assertEquals(ErrorCode.NONE, r.engine.sendWearPacket(2, 93, ByteArray(0)), "第 ${it + 1} 条应受理")
+        }
+        assertEquals(
+            ErrorCode.QUEUE_FULL,
+            r.engine.sendWearPacket(2, 93, ByteArray(0)),
+            "第 257 条必须被拒，且返回值要说明是车道满（而不是笼统的失败）",
+        )
 
         val e = r.events.filterIsInstance<GlassesEvent.Error>().last()
         assertEquals(ErrorCode.QUEUE_FULL, e.code)

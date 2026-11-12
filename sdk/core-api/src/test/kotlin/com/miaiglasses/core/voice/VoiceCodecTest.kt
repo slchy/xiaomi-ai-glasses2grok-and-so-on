@@ -70,7 +70,7 @@ class VoiceCodecTest {
 
     // ------------------------------------------------------------------ 下行 multiModel
 
-    // 以下 9 项对齐原有的 Java 实现的 B1–B9，其中 B4/B5 就是「f1/f2 写反 -> 设备不响应」的回归。
+    // 以下 9 项对齐 `docs/a5a5.md` 规范的 B1–B9，其中 B4/B5 就是「f1/f2 写反 -> 设备不响应」的回归。
 
     private fun mm(salt: ByteArray = byteArrayOf(0, 1, 2, 3)) =
         com.miaiglasses.core.pb.Pb.fields(

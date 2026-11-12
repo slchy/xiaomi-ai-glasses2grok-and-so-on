@@ -1,5 +1,7 @@
 package com.miaiglasses.transport
 
+import com.miaiglasses.core.sar.Clock
+import com.miaiglasses.core.session.ErrorCode
 import com.miaiglasses.core.session.GlassesEvent
 import com.miaiglasses.core.session.SessionState
 import java.io.IOException
@@ -111,6 +113,9 @@ class SessionDriverTest {
             model = "test-model",
             locale = "zh-CN",
             emit = { events += it },
+            // JVM 单测里 `SystemClock.elapsedRealtime()` 恒为桩值 0（不前进），
+            // 所以测试必须自己给一个会走的时钟，否则超时/退避永远不触发。
+            clock = Clock { System.nanoTime() / 1_000_000 },
             tickMs = 10,
             connectTimeoutMs = 100,
             suspendPollMs = 20,
@@ -334,10 +339,29 @@ class SessionDriverTest {
         val rig = Rig()
         rig.driver.start()
         try {
-            // 还没握手（假 link 不会回包）⇒ 必拒
-            assertTrue(!rig.driver.sendWear(2, 93, ByteArray(0)))
+            // 还没握手（假 link 不会回包）⇒ 必拒，且原因必须是 NOT_READY
+            assertEquals(ErrorCode.NOT_READY, rig.driver.sendWear(2, 93, ByteArray(0)))
         } finally {
             rig.driver.close()
         }
+    }
+
+    /**
+     * 源码护栏：`sendWear` 必须用 `pump.call` 取回引擎的判决。
+     *
+     * 为什么读源码而不是跑行为：要造出「引擎已 READY 且拒绝」的场景，得在测试里
+     * 扮演设备跑完三步握手，而设备侧要用 `SarEngine.markNegotiated()`（`:core` 的
+     * `internal`），`:transport` 的测试拿不到。这个 bug 正是「`pump.post` 把
+     * `() -> Unit` 之外的一切丢掉，于是车道满 / 超 MPS 全报成 Queued」——
+     * 静态形态就是它的全部特征，钉住形态即可。
+     */
+    @Test
+    fun `sendWear 必须用 pump_call 取回引擎判决 - 不得用 post 丢弃返回值`() {
+        val src = java.io.File("src/main/kotlin/com/miaiglasses/transport/SessionDriver.kt").readText()
+        val fn = src.substringAfter("fun sendWear(type: Int, id: Int, body: ByteArray): Int {")
+            .substringBefore("\n    }")
+        assertTrue(fn.isNotBlank(), "找不到 sendWear，护栏失效")
+        assertTrue(fn.contains("pump.call("), "sendWear 必须用 pump.call 取值：$fn")
+        assertTrue(!fn.contains("pump.post("), "pump.post 的参数是 () -> Unit，会把引擎的拒绝码丢掉：$fn")
     }
 }

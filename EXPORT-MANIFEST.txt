@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-13T11:10:20Z
+exported-at    2026-11-13T11:25:32Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符
@@ -112,7 +112,7 @@ files
   sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/SendResultTest.kt d86867d1e30a3508
   sdk/gradle/wrapper/gradle-wrapper.jar                                  2db75c40782f5e8b
   sdk/gradle/wrapper/gradle-wrapper.properties                           2caec011a749b18a
-  sdk/gradle.properties                                                  6f1462709b50c5d9
+  sdk/gradle.properties                                                  62fe9b6acf1dcb74
   sdk/gradlew                                                            a3648413b47ef77a
   sdk/gradlew.bat                                                        57931b17dd228e5c
   sdk/ktx/build.gradle.kts                                               0d9e3f6f1d5e70c9
@@ -122,7 +122,7 @@ files
   sdk/README.md                                                          67eeaa393c738a66
   sdk/sample/build.gradle.kts                                            75e0697df310f97f
   sdk/sample/src/main/AndroidManifest.xml                                dcf6d0b2b2e98279
-  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/DashboardActivity.kt 5038fb859bd57fe5
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/DashboardActivity.kt a2577259925f076f
   sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/MainActivity.kt 201ac353ac12da40
   sdk/sample/src/main/res/layout/activity_dashboard.xml                  d3e683fe7671dff0
   sdk/sample/src/main/res/layout/activity_main.xml                       928f05161757c12b

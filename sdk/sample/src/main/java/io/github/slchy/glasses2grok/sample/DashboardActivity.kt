@@ -175,15 +175,15 @@ class DashboardActivity : Activity() {
         val bonded = try {
             adapter?.bondedDevices.orEmpty()
         } catch (e: SecurityException) {
-            log("读已配对设备失败（缺 BLUETOOTH_CONNECT）")
+            log("读已配对设备失败（缺 BLUETOOTH_CONNECT），请到系统设置授权后回来")
             emptySet<BluetoothDevice>()
         }
         devices.clear()
-        devices += bonded.sortedBy { it.name ?: it.address }
+        devices += bonded.sortedBy { deviceLabel(it) }
         spinner.adapter = ArrayAdapter(
             this,
             android.R.layout.simple_spinner_dropdown_item,
-            devices.map { "${it.name ?: "?"}  ${it.address}" },
+            devices.map { "${deviceLabel(it)}  ${it.address}" },
         )
         // 上次连过的那台优先选中
         val saved = prefs.getString(KEY_ADDRESS, null)
@@ -191,7 +191,26 @@ class DashboardActivity : Activity() {
         if (idx >= 0) spinner.setSelection(idx)
     }
 
+    /**
+     * `BluetoothDevice.name` 会抛 `SecurityException` —— 用户撤销蓝牙权限后点名就闪退
+     * （真机上踩到过：`pm clear` 之后点「连接」直接 FATAL）。名字只是显示用，拿不到就退化成地址。
+     */
+    private fun deviceLabel(device: BluetoothDevice): String = try {
+        device.name ?: device.address
+    } catch (e: SecurityException) {
+        device.address
+    }
+
+    private fun hasBluetoothPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+
     private fun connect() {
+        if (!hasBluetoothPermission()) {
+            toast("缺蓝牙权限，先授权")
+            requestPermissionsIfNeeded()
+            return
+        }
         val device = devices.getOrNull(spinner.selectedItemPosition) ?: run {
             toast("先配对一台眼镜")
             return
@@ -205,7 +224,7 @@ class DashboardActivity : Activity() {
         model = "—"
         battery = "—"
 
-        log("连接 ${device.name ?: device.address}")
+        log("连接 ${deviceLabel(device)}")
         val s = try {
             // 门面自己解 hex（B-001），这里不再抄一份 parseToken
             GlassesSession.open(this, device, tokenInput.text.toString(), SessionOptions())
@@ -224,6 +243,11 @@ class DashboardActivity : Activity() {
         session?.close()
         session = null
         readyAtMs = 0
+        // 断开后不留上一轮的电量/固件 —— 和「未连接」并排显示只会误导
+        firmware = "—"
+        model = "—"
+        battery = "—"
+        renderFacts()
         log("已请求断开")
     }
 
@@ -292,7 +316,7 @@ class DashboardActivity : Activity() {
     }
 
     private fun renderState(state: SessionState, reason: String) {
-        stateLine.text = humanState(state, reason)
+        put(stateLine, humanState(state, reason))
         light.setTextColor(
             when (state) {
                 SessionState.READY -> GREEN
@@ -301,14 +325,17 @@ class DashboardActivity : Activity() {
                 else -> GREY
             },
         )
-        deviceName.text = when (state) {
-            SessionState.IDLE, SessionState.CLOSED -> "未连接"
-            else -> devices.getOrNull(spinner.selectedItemPosition)?.name ?: "眼镜"
-        }
+        put(
+            deviceName,
+            when (state) {
+                SessionState.IDLE, SessionState.CLOSED -> "未连接"
+                else -> devices.getOrNull(spinner.selectedItemPosition)?.let { deviceLabel(it) } ?: "眼镜"
+            },
+        )
         sessionBox.visibility =
             if (state == SessionState.IDLE || state == SessionState.CLOSED) LinearLayout.GONE
             else LinearLayout.VISIBLE
-        sessionLine.text = humanState(state, reason)
+        put(sessionLine, humanState(state, reason))
         log(humanState(state, reason))
     }
 
@@ -350,23 +377,32 @@ class DashboardActivity : Activity() {
     }
 
     private fun renderFacts() {
-        facts.text = "电量 $battery\u3000固件 $firmware\u3000型号 $model"
+        put(facts, "电量 $battery\u3000固件 $firmware\u3000型号 $model")
+    }
+
+    /** 只在文本真的变了才写 —— 每秒无条件 setText 会让界面永远不「空闲」：既白费重排，
+     *  也让 uiautomator 之类的自动化拿不到 idle state（真机上踩到过）。 */
+    private fun put(view: TextView, text: String) {
+        if (view.text.toString() != text) view.text = text
     }
 
     private fun refreshUptime() {
-        uptime.text = if (readyAtMs == 0L) {
-            "已运行 —"
-        } else {
-            val sec = (System.currentTimeMillis() - readyAtMs) / 1000
-            "已运行 %d 小时 %02d 分".format(sec / 3600, (sec % 3600) / 60)
-        }
+        put(
+            uptime,
+            if (readyAtMs == 0L) {
+                "已运行 —"
+            } else {
+                val sec = (System.currentTimeMillis() - readyAtMs) / 1000
+                "已运行 %d 小时 %02d 分".format(sec / 3600, (sec % 3600) / 60)
+            },
+        )
     }
 
     /** 计数器在引擎线程上，别在主线程同步等（读数会占任务队列）。 */
     private fun refreshCounters() {
         val s = session ?: run {
-            diagLink.text = "收帧 —\u3000发帧 —\u3000NAK —\u3000重传 —"
-            diagAudio.text = "音频帧 —\u3000音频 —"
+            put(diagLink, "收帧 —\u3000发帧 —\u3000NAK —\u3000重传 —")
+            put(diagAudio, "音频帧 —\u3000音频 —")
             return
         }
         io.execute {
@@ -374,8 +410,8 @@ class DashboardActivity : Activity() {
             val frames = audioFrames
             val bytes = audioBytes
             main.post {
-                diagLink.text = "收帧 ${c.rxFrames}\u3000发帧 ${c.txFrames}\u3000NAK ${c.nakSent}\u3000重传 ${c.retrans}"
-                diagAudio.text = "音频帧 ${frames}\u3000音频 ${"%.1f".format(bytes / 1024.0)} KB"
+                put(diagLink, "收帧 ${c.rxFrames}\u3000发帧 ${c.txFrames}\u3000NAK ${c.nakSent}\u3000重传 ${c.retrans}")
+                put(diagAudio, "音频帧 ${frames}\u3000音频 ${"%.1f".format(bytes / 1024.0)} KB")
             }
         }
     }

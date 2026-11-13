@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.miaiglasses.sdk.ktx"
+    namespace = "io.github.slchy.glasses2grok.sdk.ktx"
     compileSdk = 34
 
     defaultConfig {

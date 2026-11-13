@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.miaiglasses.transport"
+    namespace = "io.github.slchy.glasses2grok.transport"
     compileSdk = 34
 
     defaultConfig {

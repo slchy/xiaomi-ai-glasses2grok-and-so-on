@@ -30,8 +30,8 @@ SDK 采用严格的分层单向依赖架构，划分为 7 个模块：
 | `:core-api` | JVM | 内部 API | 公开契约层：状态定义、事件模型、查询 DTO 与常量 |
 | `:core` | JVM | 内部实现 | 核心协议引擎：L1 解包、L2 多路复用、SAR 状态机、握手认证 |
 | `:transport` | Android | 内部实现 | 蓝牙 SPP Socket I/O、后台泵线程与系统广播监听 |
-| `:facade` | Android | `com.miaiglasses:sdk` | **主对外门面 AAR**：导出 `GlassesSession` 与高层 API |
-| `:ktx` | Android | `com.miaiglasses:sdk-ktx` | **可选协程扩展 AAR**：提供 `Flow<GlassesEvent>` 与挂起扩展 |
+| `:facade` | Android | `io.github.slchy.glasses2grok:sdk` | **主对外门面 AAR**：导出 `GlassesSession` 与高层 API |
+| `:ktx` | Android | `io.github.slchy.glasses2grok:sdk-ktx` | **可选协程扩展 AAR**：提供 `Flow<GlassesEvent>` 与挂起扩展 |
 | `:sample` | Android | 演示应用 | 单页仪表盘（连接 / 握手 / 状态 / 诊断 + 日志复制）与协议探针面板 |
 
 ### 快速接入 (Gradle)
@@ -54,16 +54,16 @@ repositories {
     google()
 }
 dependencies {
-    implementation("com.miaiglasses:sdk:0.1.1")
-    implementation("com.miaiglasses:sdk-ktx:0.1.1") // 可选，提供 Kotlin 协程 / Flow 支持
+    implementation("io.github.slchy.glasses2grok:sdk:0.2.0")
+    implementation("io.github.slchy.glasses2grok:sdk-ktx:0.2.0") // 可选，提供 Kotlin 协程 / Flow 支持
 }
 ```
 
 ### 快速上手 (Kotlin)
 
 ```kotlin
-import com.miaiglasses.core.session.GlassesEvent
-import com.miaiglasses.sdk.GlassesSession
+import io.github.slchy.glasses2grok.core.session.GlassesEvent
+import io.github.slchy.glasses2grok.sdk.GlassesSession
 
 // 1. 获取已配对的蓝牙设备与 16 字节鉴权 Token
 val device: BluetoothDevice = bluetoothAdapter.getRemoteDevice("...")

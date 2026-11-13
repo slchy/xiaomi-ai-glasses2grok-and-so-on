@@ -30,8 +30,8 @@ The SDK adopts a strict unidirectional layered architecture across 7 decoupled m
 | `:core-api` | JVM | Internal API | Public contract layer: states, events, query DTOs, and constants |
 | `:core` | JVM | Internal implementation | Core protocol engine: L1 parsing, L2 multiplexing, SAR, handshake auth |
 | `:transport` | Android | Internal implementation | Bluetooth SPP socket I/O, pump threads, and broadcast listeners |
-| `:facade` | Android | `com.miaiglasses:sdk` | **Main public AAR**: Exposes `GlassesSession` and high-level verbs |
-| `:ktx` | Android | `com.miaiglasses:sdk-ktx` | **Optional Coroutines AAR**: Exposes `Flow<GlassesEvent>` and suspend utilities |
+| `:facade` | Android | `io.github.slchy.glasses2grok:sdk` | **Main public AAR**: Exposes `GlassesSession` and high-level verbs |
+| `:ktx` | Android | `io.github.slchy.glasses2grok:sdk-ktx` | **Optional Coroutines AAR**: Exposes `Flow<GlassesEvent>` and suspend utilities |
 | `:sample` | Android | Demo app | One-page dashboard (connect / handshake / status / diagnostics / log copy) plus a protocol probe panel |
 
 ### Gradle Dependency
@@ -54,16 +54,16 @@ repositories {
     google()
 }
 dependencies {
-    implementation("com.miaiglasses:sdk:0.1.1")
-    implementation("com.miaiglasses:sdk-ktx:0.1.1") // Optional: Coroutines & Flow support
+    implementation("io.github.slchy.glasses2grok:sdk:0.2.0")
+    implementation("io.github.slchy.glasses2grok:sdk-ktx:0.2.0") // Optional: Coroutines & Flow support
 }
 ```
 
 ### Quick Start (Kotlin)
 
 ```kotlin
-import com.miaiglasses.core.session.GlassesEvent
-import com.miaiglasses.sdk.GlassesSession
+import io.github.slchy.glasses2grok.core.session.GlassesEvent
+import io.github.slchy.glasses2grok.sdk.GlassesSession
 
 // 1. Obtain bonded BluetoothDevice and 16-byte authentication Token
 val device: BluetoothDevice = bluetoothAdapter.getRemoteDevice("...")

@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.miaiglasses.sample"
+    namespace = "io.github.slchy.glasses2grok.sample"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.miaiglasses.sample"
+        applicationId = "io.github.slchy.glasses2grok.sample"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

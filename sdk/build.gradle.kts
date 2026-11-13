@@ -9,6 +9,6 @@ plugins {
 val releaseVersion: String = (findProperty("miaiglassesVersion") as String?) ?: "0.0.0-SNAPSHOT"
 
 allprojects {
-    group = "com.miaiglasses"
+    group = "io.github.slchy.glasses2grok"
     version = releaseVersion
 }

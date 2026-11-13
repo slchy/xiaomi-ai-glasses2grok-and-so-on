@@ -20,8 +20,8 @@ sdk/
 ├─ core-api/      :core-api     纯 JVM：**公开契约层**（事件、状态、查询 DTO、协议常量）
 ├─ core/          :core         纯 JVM：**引擎**（L1 解包、L2 复用、SAR 状态机、握手、加密）
 ├─ transport/     :transport    Android 库（minSdk 24）：SPP socket I/O、泵线程、系统广播
-├─ facade/        :facade       Android 库：**公开门面**，产出 `com.miaiglasses:sdk` AAR
-├─ ktx/           :ktx          Android 库：可选协程扩展，产出 `com.miaiglasses:sdk-ktx` AAR
+├─ facade/        :facade       Android 库：**公开门面**，产出 `io.github.slchy.glasses2grok:sdk` AAR
+├─ ktx/           :ktx          Android 库：可选协程扩展，产出 `io.github.slchy.glasses2grok:sdk-ktx` AAR
 └─ sample/        :sample       演示 App（可直接 adb install）
 ```
 
@@ -58,7 +58,7 @@ sample ──implementation──▶ facade
 ### 2.1 `:core-api`（契约层）
 
 ```text
-com.miaiglasses.core
+io.github.slchy.glasses2grok.core
 ├─ session/   SessionState · GlassesEvent · ErrorCode
 ├─ config/    GlassesProtocol · GlassesOptions · GlassesEndpoints
 ├─ query/     QueryIds · QueryResult · DeviceInfo · DeviceStatus · MediaSummary · MediaList
@@ -85,7 +85,7 @@ com.miaiglasses.core
 ### 2.2 `:core`（引擎）
 
 ```text
-com.miaiglasses.core
+io.github.slchy.glasses2grok.core
 ├─ session/   SessionEngine（唯一真实状态）· ByteTransport
 ├─ sar/       SarEngine（GBN 窗口 / ACK / NAK / 车道配额）· SarInternals
 ├─ handshake/ HandshakeDriver（协商 → AppVerify → DeviceVerify → AppConfirm → DeviceConfirm）
@@ -109,7 +109,7 @@ com.miaiglasses.core
 ### 2.3 `:transport`（传输）
 
 ```text
-com.miaiglasses.transport
+io.github.slchy.glasses2grok.transport
 ├─ SppLink          流套接字抽象（可用性门禁 + 关闭原因）
 ├─ AndroidSppLink   BluetoothSocket 适配：看门狗、系统广播、重配对节流
 ├─ EnginePump       引擎线程：任务队列 / 有界 RX 队列（世代号）/ 周期 tick
@@ -127,7 +127,7 @@ com.miaiglasses.transport
 ### 2.4 `:facade`（公开门面）
 
 ```text
-com.miaiglasses.sdk
+io.github.slchy.glasses2grok.sdk
 ├─ GlassesSession     唯一入口：open / 查询 / 发送 / 写设置 / close
 ├─ GlassesEventSource 事件源接口（state + 订阅）
 ├─ GlassesListener    fun interface onEvent(GlassesEvent)

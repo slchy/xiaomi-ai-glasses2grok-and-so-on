@@ -86,6 +86,9 @@ internal class SarEngine(
     var timeoutCount = 0L; private set
     var retransCount = 0L; private set
 
+    /** 已交付给上层的 DATA 帧数。乱序被 NAK 掉的帧不算（没交付）。 */
+    var rxFrameCount = 0L; private set
+
     /**
      * 「不需要 ACK 的 DATA 帧」计数（参考实现）。
      *
@@ -317,6 +320,7 @@ internal class SarEngine(
                 noAckDataOnExpectedSeq++
             }
         }
+        rxFrameCount++
         onDeliver?.invoke(f.payload)
     }
 

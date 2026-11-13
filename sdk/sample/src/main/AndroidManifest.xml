@@ -14,12 +14,13 @@
 
     <application
         android:allowBackup="false"
-        android:label="Glasses SDK 冒烟"
+        android:label="眼镜助手"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <!-- 真实应用界面：单页仪表盘 -->
         <activity
-            android:name=".MainActivity"
+            android:name=".DashboardActivity"
             android:exported="true"
             android:screenOrientation="portrait">
             <intent-filter>
@@ -27,5 +28,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 协议探针：不再占启动图标，但保留 exported，`am start -n …/.MainActivity`
+             与全部 intent 参数继续可用（发布出来的 sample APK 仍能当验证工具用）。 -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="探针面板"
+            android:screenOrientation="portrait" />
     </application>
 </manifest>

@@ -75,6 +75,16 @@ public class SessionEngine(
         get() = "exchanged=${sar.isCmdExchanged} pending=${sar.pending} mps=${sar.remoteMps} win=${sar.remoteTxWindow} lanes=[${sar.laneSummary}]"
     internal val handshakeFailure: HandshakeDriver.Failure? get() = handshake.failure
 
+    // ---- 链路计数：宿主仪表盘用。都是原子性无要求的 Long 自增，读侧允许略滞后。
+    /** 已交付的 DATA 帧数。 */
+    public val rxFrameCount: Long get() = sar.rxFrameCount
+    /** 本端发出的 NAK 数。持续增长 = 对端收不全/乱序。 */
+    public val nakSentCount: Long get() = sar.nakSentCount
+    /** 重传次数。持续增长 = 丢包严重。 */
+    public val retransCount: Long get() = sar.retransCount
+    /** 已发出（进链路）的 DATA 帧数。 */
+    public val txFrameCount: Long get() = sar.sentCount
+
     init {
         handshake = HandshakeDriver(
             token16 = token16,

@@ -32,7 +32,7 @@ SDK 采用严格的分层单向依赖架构，划分为 7 个模块：
 | `:transport` | Android | 内部实现 | 蓝牙 SPP Socket I/O、后台泵线程与系统广播监听 |
 | `:facade` | Android | `com.miaiglasses:sdk` | **主对外门面 AAR**：导出 `GlassesSession` 与高层 API |
 | `:ktx` | Android | `com.miaiglasses:sdk-ktx` | **可选协程扩展 AAR**：提供 `Flow<GlassesEvent>` 与挂起扩展 |
-| `:sample` | Android | 冒烟测试 App | 包含配对建连、状态查询与音频流监听的演示应用 |
+| `:sample` | Android | 演示应用 | 单页仪表盘（连接 / 握手 / 状态 / 诊断 + 日志复制）与协议探针面板 |
 
 ### 快速接入 (Gradle)
 

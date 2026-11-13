@@ -6,6 +6,7 @@ import com.miaiglasses.core.sar.SarConfig
 import com.miaiglasses.core.session.ByteTransport
 import com.miaiglasses.core.session.ErrorCode
 import com.miaiglasses.core.session.GlassesEvent
+import com.miaiglasses.core.session.LinkCounters
 import com.miaiglasses.core.session.SessionEngine
 import com.miaiglasses.core.session.SessionState
 import com.miaiglasses.core.voice.VoiceCodec
@@ -394,6 +395,21 @@ class SessionDriver(
 
     /** 因世代不符（上一轮 socket 的残留）被丢弃的块数，不计入音频空洞。 */
     val rxStaleChunks: Long get() = pump.staleRxChunks
+
+    /**
+     * 链路计数快照（仪表盘用）。
+     *
+     * 一次 `pump.call` 取四个数 —— 它们在引擎线程上自增，逐项跨线程读会读到「半轮」的数，
+     * 而分四次取值又会让宿主每秒占用四次任务队列。泵已停时返回 null。
+     */
+    fun linkCounters(): LinkCounters? = pump.call(200) {
+        LinkCounters(
+            rxFrames = engine.rxFrameCount,
+            txFrames = engine.txFrameCount,
+            nakSent = engine.nakSentCount,
+            retrans = engine.retransCount,
+        )
+    }
 
     private fun supervise() {
         var reachedReadyBefore = false

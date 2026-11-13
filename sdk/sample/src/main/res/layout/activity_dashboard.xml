@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  单页三段式（状态 / 会话 / 诊断）+ 首屏可见的配置区。
+
+  不做 Bottom Navigation：三块内容塞不进导航栏，切页只会让「出问题时找不到信息」更严重。
+  颜色只用灰 / 绿 / 黄 / 红，不做动画 —— 用户是在出问题时看这一屏。
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- ① 状态区 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/light"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="●"
+                android:textColor="#9E9E9E"
+                android:textSize="22sp" />
+
+            <TextView
+                android:id="@+id/deviceName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:text="未连接"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/stateLine"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="未连接"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/facts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="电量 —\u3000固件 —\u3000型号 —"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/uptime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="已运行 —"
+            android:textSize="13sp" />
+
+        <!-- ② 配置区：改装时最常改的就是设备、token、云端地址，不藏进设置页 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="设备与凭据"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <Spinner
+            android:id="@+id/devices"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <EditText
+            android:id="@+id/token"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="token16（32 位 hex，由宿主提供）"
+            android:inputType="textNoSuggestions"
+            android:textSize="13sp" />
+
+        <CheckBox
+            android:id="@+id/remember"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="记住设备与 token"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/connect"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="连接" />
+
+            <Button
+                android:id="@+id/disconnect"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="断开" />
+        </LinearLayout>
+
+        <!-- ③ 会话区：仅在活跃时出现，空闲时隐藏（不占位） -->
+        <LinearLayout
+            android:id="@+id/sessionBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="会话"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/sessionLine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="—"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- ④ 诊断区 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="诊断"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/diagLink"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="收帧 —\u3000发帧 —\u3000NAK —\u3000重传 —"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/diagAudio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="音频帧 —\u3000音频 —"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/diagCloud"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="云端未接入"
+            android:textSize="13sp" />
+
+        <!-- ⑤ 日志：用户不会 adb logcat，但能复制粘贴 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/copyLog"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="复制日志" />
+
+            <Button
+                android:id="@+id/probePanel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="探针面板" />
+        </LinearLayout>
+
+        <ScrollView
+            android:id="@+id/logScroll"
+            android:layout_width="match_parent"
+            android:layout_height="260dp">
+
+            <TextView
+                android:id="@+id/log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textIsSelectable="true"
+                android:textSize="12sp" />
+        </ScrollView>
+    </LinearLayout>
+</ScrollView>

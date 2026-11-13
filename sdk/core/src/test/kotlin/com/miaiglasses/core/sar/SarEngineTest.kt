@@ -221,6 +221,23 @@ class SarEngineTest {
     }
 
     @Test
+    fun `rxFrameCount 只统计交付出去的 DATA 帧`() {
+        val r = Rig()
+        r.engine.feed(configFrame)
+        r.drain()
+
+        for (i in 0 until 3) {
+            r.engine.feed(L1Codec.build(L1.TYPE_DATA, seq = i, payload = byteArrayOf(1, 2, 0)))
+        }
+        assertEquals(3L, r.engine.rxFrameCount, "三帧按序交付，应计 3")
+
+        // 乱序帧只回 NAK、不交付 ⇒ 不计数（否则仪表盘会把丢包读成「在收数据」）
+        r.engine.feed(L1Codec.build(L1.TYPE_DATA, seq = 9, payload = byteArrayOf(1, 2, 0)))
+        assertEquals(3L, r.engine.rxFrameCount, "被 NAK 掉的帧不算交付")
+        assertEquals(1L, r.engine.nakSentCount)
+    }
+
+    @Test
     fun `frx 为 1 时强制采纳对端序号`() {
         val r = Rig()
         r.engine.feed(configFrame)

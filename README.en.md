@@ -32,7 +32,7 @@ The SDK adopts a strict unidirectional layered architecture across 7 decoupled m
 | `:transport` | Android | Internal implementation | Bluetooth SPP socket I/O, pump threads, and broadcast listeners |
 | `:facade` | Android | `com.miaiglasses:sdk` | **Main public AAR**: Exposes `GlassesSession` and high-level verbs |
 | `:ktx` | Android | `com.miaiglasses:sdk-ktx` | **Optional Coroutines AAR**: Exposes `Flow<GlassesEvent>` and suspend utilities |
-| `:sample` | Android | Smoke test App | Demo application demonstrating pairing, handshake, queries, and audio streams |
+| `:sample` | Android | Demo app | One-page dashboard (connect / handshake / status / diagnostics / log copy) plus a protocol probe panel |
 
 ### Gradle Dependency
 

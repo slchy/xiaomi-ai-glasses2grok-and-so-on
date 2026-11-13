@@ -29,6 +29,7 @@ import com.miaiglasses.core.query.RecordStatus
 import com.miaiglasses.core.query.SystemSetting
 import com.miaiglasses.core.query.SystemSettingRequest
 import com.miaiglasses.core.query.SystemSettingWrite
+import com.miaiglasses.core.session.LinkCounters
 import com.miaiglasses.core.wifi.WifiApInfo
 import com.miaiglasses.core.query.WifiConfig
 import com.miaiglasses.core.session.GlassesEvent
@@ -175,6 +176,12 @@ public class GlassesSession internal constructor(
      * 非零且持续增长，说明宿主（或 sample）在用裸 `(type, id)` 发命令 ——
      * 那就是「还没封装成具名能力」的清单来源。
      */
+    /** 当前链路计数快照。**未连接时返回 [LinkCounters.EMPTY]。**
+     *
+     * 取值会占用一次引擎任务队列（最多 200 ms），别在高频循环里调 —— 仪表盘一秒一次足够。
+     */
+    public fun linkCounters(): LinkCounters = driver.linkCounters() ?: LinkCounters.EMPTY
+
     public val rawSendCount: Long get() = rawSends.get()
 
     /**

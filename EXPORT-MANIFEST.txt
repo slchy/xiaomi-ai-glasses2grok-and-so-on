@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-13T11:25:32Z
+exported-at    2026-11-13T21:35:53Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符
@@ -12,16 +12,74 @@ transforms
   - 依赖夹具的测试排除：CaptureReplayTest / RealTrafficHeadersTest
   - core/build.gradle.kts：摘掉 replay 夹具配置
   - tests/golden/vectors.txt：用 mock token 重新生成
+  - 云侧：部署地址 / 个人目录 / 内网网段换成占位；凭据、模型二进制、早期原型不导出
 files
+  cloud/.env.example                                                     1e52ced1094716e7
+  cloud/.gitignore                                                       804cd723d4102448
+  cloud/mcp/camera.yml                                                   adafec541f319d95
+  cloud/mcp/mcp-camera.mjs                                               419353fb3c038572
+  cloud/mcp/mcp-session.mjs                                              cb2e8f99e21e0b98
+  cloud/models/README.md                                                 2cf3a159cd6b2696
+  cloud/package-lock.json                                                600bde36a00ac413
+  cloud/package.json                                                     10dc18d7ade5759f
+  cloud/README.md                                                        1576edfec43c8f62
+  cloud/scripts/aliyun-probe.mjs                                         59faa018576cd72f
+  cloud/scripts/nls-check.mjs                                            2e74866133629803
+  cloud/scripts/push-sbc.mjs                                             6f352e21a1ef0078
+  cloud/smart_turn/server.py                                             633ca8512d69588b
+  cloud/smart_turn/whisper_features.py                                   139b047d10dee42a
+  cloud/src/agent.ts                                                     c94c276e8aa449f1
+  cloud/src/aliyun-asr.ts                                                98d10a00d9072775
+  cloud/src/aliyun-session.ts                                            088cb9ab99e701fe
+  cloud/src/announce-store.ts                                            2755bb41fd11b039
+  cloud/src/archive.ts                                                   78ddc11023b27568
+  cloud/src/backchannel.ts                                               a17c56722d563ac7
+  cloud/src/calibrate.ts                                                 66d23144b2ead465
+  cloud/src/dialog-fsm.ts                                                e51629f218e9ebd4
+  cloud/src/emotion.ts                                                   813ee76bde6dca6f
+  cloud/src/energy-gate.ts                                               087f8651642060bf
+  cloud/src/frame.ts                                                     d397ab1abe758153
+  cloud/src/hq-intent.ts                                                 7d82d67f00a73f24
+  cloud/src/legacy-pipeline.ts                                           b8bc477257f60484
+  cloud/src/main.ts                                                      f9cb49629c04c985
+  cloud/src/mimo.ts                                                      a0ceaa328f902aff
+  cloud/src/pcm.ts                                                       ee6da048c6e3f35a
+  cloud/src/photo-inbox.ts                                               5021834473b7bd1b
+  cloud/src/providers.ts                                                 d5fc79e71f716adc
+  cloud/src/session-core.ts                                              6e2fea0c61ed6b1b
+  cloud/src/session.ts                                                   5db0eb126a657767
+  cloud/src/smart-turn.ts                                                ac050d565362a2d0
+  cloud/src/spontaneous.ts                                               ffd30b88e70869c8
+  cloud/src/tool-control.ts                                              44bd5212a2651450
+  cloud/src/transport.ts                                                 9abe62805d1fb69e
+  cloud/src/turn-runner.ts                                               d1db83aef3d89cb8
+  cloud/src/uplink-pipeline.ts                                           7dd8ac66bcfb0d7e
+  cloud/src/util.ts                                                      dc32d761b5ac594c
+  cloud/src/utterance-assembler.ts                                       2737eae1fb3f97b6
+  cloud/src/vad.ts                                                       1fbd7a4ac9fa824b
+  cloud/src/wake-word.ts                                                 7ae9c673e3a1fdac
+  cloud/tests/announce-store.test.ts                                     a83670c1d0ccc610
+  cloud/tests/archive.test.ts                                            7200d9f42c309126
+  cloud/tests/backchannel-verify.ts                                      2f90196dd3980306
+  cloud/tests/emotion.test.ts                                            5cf092c0d19bdf5f
+  cloud/tests/fsm-verify.ts                                              a3504615bf4be08f
+  cloud/tests/hq-intent.test.ts                                          c053404bc389d73e
+  cloud/tests/photo-await.test.ts                                        0758113cc06091d4
+  cloud/tests/prompt-boundary.test.ts                                    560fe089b861cda5
+  cloud/tests/session-core.test.ts                                       c56fa1bbd37be5aa
+  cloud/tests/spontaneous.test.ts                                        a2a9bc51d21782f7
+  cloud/tools/fake-phone.ts                                              ac7d36aaac90669a
+  cloud/tsconfig.json                                                    fe13db2594418b66
+  docs/CLOUD-ARCHITECTURE.md                                             56a9a59ab2f04b46
   sdk/.gitignore                                                         72dca7e4edbe14a0
   sdk/build.gradle.kts                                                   c3f8667075894276
-  sdk/core/build.gradle.kts                                              8de502b2850bcc80
+  sdk/core/build.gradle.kts                                              141dae468006d1ed
   sdk/core/src/main/kotlin/io/github/slchy/glasses2grok/core/control/ControlRouter.kt 404b2a81524188b1
   sdk/core/src/main/kotlin/io/github/slchy/glasses2grok/core/crypto/Crypto.kt 90c0c00a4f2233a2
   sdk/core/src/main/kotlin/io/github/slchy/glasses2grok/core/crypto/SessionKeys.kt 124c2a884da878cd
   sdk/core/src/main/kotlin/io/github/slchy/glasses2grok/core/handshake/HandshakeDriver.kt 2a0e83cffd77a204
   sdk/core/src/main/kotlin/io/github/slchy/glasses2grok/core/l1/L1.kt    3501045f8ec34359
-  sdk/core/src/main/kotlin/io/github/slchy/glasses2grok/core/l1/L1Parser.kt bdd39401dfdc2410
+  sdk/core/src/main/kotlin/io/github/slchy/glasses2grok/core/l1/L1Parser.kt 381eb010da75246d
   sdk/core/src/main/kotlin/io/github/slchy/glasses2grok/core/l2/L2.kt    b18271adc1d34edc
   sdk/core/src/main/kotlin/io/github/slchy/glasses2grok/core/mass/Mass.kt 7297c4197b4af0da
   sdk/core/src/main/kotlin/io/github/slchy/glasses2grok/core/mass/MassAssembler.kt 9aaa396b088b19b6
@@ -49,7 +107,7 @@ files
   sdk/core/src/test/kotlin/io/github/slchy/glasses2grok/core/sar/SarStallStatsTest.kt 40b88a608a894958
   sdk/core/src/test/kotlin/io/github/slchy/glasses2grok/core/session/SessionEngineTest.kt 64357d06db172b05
   sdk/core/src/test/kotlin/io/github/slchy/glasses2grok/core/wear/WearTest.kt 22648e561e4ce623
-  sdk/core-api/build.gradle.kts                                          5d9de6e0c49011c0
+  sdk/core-api/build.gradle.kts                                          6e0b44bc9035e627
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/album/Album.kt dc53be540e0352e7
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/config/GlassesEndpoints.kt b8f5f19fc5b50b9e
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/config/GlassesOptions.kt a26d32cf1aabd1f4
@@ -65,12 +123,12 @@ files
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/query/GestureSettings.kt 695a0908dd607eec
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/query/Query.kt 60ee6041b3d61f69
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/query/ReportData.kt 8aba12b0fde3a2ad
-  sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/sar/SarConfig.kt 6e00bf0fe5bd191a
+  sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/sar/SarConfig.kt 83c772f6d4944423
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/session/ErrorCode.kt fba33bf3707f9dce
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/session/LinkCounters.kt 54f89784e2a9f5f7
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/session/SessionState.kt cb5c966a37637a12
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/system/SystemTimeCodec.kt efdb7daebb2c49c7
-  sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/voice/Voice.kt d8193449c3eaf433
+  sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/voice/Voice.kt 68c686c0226381ff
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/wear/Wear.kt 7780dc9a532cb033
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/wifi/WifiAp.kt 2d8fb1f5079bf01a
   sdk/core-api/src/main/kotlin/io/github/slchy/glasses2grok/core/wifi/WifiP2p.kt bffde1611a441848
@@ -92,8 +150,8 @@ files
   sdk/core-proto/src/main/kotlin/io/github/slchy/glasses2grok/core/json/MiniJson.kt d778255d003d727a
   sdk/core-proto/src/main/kotlin/io/github/slchy/glasses2grok/core/pb/Pb.kt 04c468ce85d1df01
   sdk/core-proto/src/test/kotlin/io/github/slchy/glasses2grok/core/Crc16ArcTest.kt 6915115af47ae2ee
-  sdk/facade/build.gradle.kts                                            ac8b4d1d73bb3439
-  sdk/facade/consumer-rules.pro                                          686346540d47d5a2
+  sdk/facade/build.gradle.kts                                            3965c3839ab9f97d
+  sdk/facade/consumer-rules.pro                                          7111c74e9490fa42
   sdk/facade/src/main/AndroidManifest.xml                                1de4d9de55b7c48f
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/AlbumClient.kt 807b66694a815de2
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/AudioVolume.kt 6f453a25724701a3
@@ -102,17 +160,17 @@ files
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/EventDispatcher.kt d48d0b9ff1461cd0
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/GlassesEventSource.kt de653e87b0097263
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/GlassesListener.kt b05fccc79b9e7cf5
-  sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/GlassesSession.kt 947d8e6549d72acc
+  sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/GlassesSession.kt 891fb1d15a5bbfdb
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/P2pGroupOwner.kt 18bd31a0b380d106
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/SendResult.kt dbaa772e5b302420
-  sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/SessionOptions.kt 14329022ddac870f
+  sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/SessionOptions.kt 376d9c0065370760
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/SettingWriteResult.kt ce86d95e1f5821f8
   sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/CallbackQueueTest.kt 7dcab8d90d8c9046
   sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/GlassesSessionTest.kt 082c042c0372a4f6
   sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/SendResultTest.kt d86867d1e30a3508
   sdk/gradle/wrapper/gradle-wrapper.jar                                  2db75c40782f5e8b
   sdk/gradle/wrapper/gradle-wrapper.properties                           2caec011a749b18a
-  sdk/gradle.properties                                                  62fe9b6acf1dcb74
+  sdk/gradle.properties                                                  30850dd91d5f611e
   sdk/gradlew                                                            a3648413b47ef77a
   sdk/gradlew.bat                                                        57931b17dd228e5c
   sdk/ktx/build.gradle.kts                                               0d9e3f6f1d5e70c9
@@ -120,12 +178,20 @@ files
   sdk/ktx/src/main/kotlin/io/github/slchy/glasses2grok/sdk/ktx/GlassesFlow.kt cf15edd71d7fad33
   sdk/ktx/src/test/kotlin/io/github/slchy/glasses2grok/sdk/ktx/GlassesFlowTest.kt 2ba7fe87c34cb684
   sdk/README.md                                                          67eeaa393c738a66
-  sdk/sample/build.gradle.kts                                            75e0697df310f97f
+  sdk/sample/build.gradle.kts                                            2b37bef5ec0be5f5
   sdk/sample/src/main/AndroidManifest.xml                                dcf6d0b2b2e98279
-  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/DashboardActivity.kt a2577259925f076f
-  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/MainActivity.kt 201ac353ac12da40
-  sdk/sample/src/main/res/layout/activity_dashboard.xml                  d3e683fe7671dff0
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/DashboardActivity.kt 0870443c3c7b4d6d
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/HighResPhoto.kt 9d26fcfd04c91946
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/MainActivity.kt 8d7a455a666996e3
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/PcmPlayer.kt a7f35b204500989d
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/PhotoFsm.kt 5a629499ddbb44f0
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/PhotoJob.kt e9cb17b4137a396b
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/Tls.kt    51d0b206fd9b90ec
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/VoiceLink.kt 2192f6aa86433f43
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/Wire.kt   1158497b771907f2
+  sdk/sample/src/main/res/layout/activity_dashboard.xml                  62877d6035b31c25
   sdk/sample/src/main/res/layout/activity_main.xml                       928f05161757c12b
+  sdk/sample/src/test/java/io/github/slchy/glasses2grok/sample/PhotoFsmTest.kt 6d787b1840950cbd
   sdk/settings.gradle.kts                                                78d9d2adf59ab1d8
   sdk/transport/build.gradle.kts                                         b947ffc88f9f2379
   sdk/transport/consumer-rules.pro                                       eb169144bff14335
@@ -146,7 +212,7 @@ files
   sdk/transport/src/test/kotlin/io/github/slchy/glasses2grok/transport/SessionDriverTest.kt 63b47ba480e4acb2
 
 scope
-  - 本清单逐文件校验的只有 sdk/ 与 tests/golden/vectors.txt（上面 files 段）
+  - 本清单逐文件校验的是 sdk/、cloud/ 与 tests/golden/vectors.txt（上面 files 段）
   - 下面列的是公开仓手写文件：不参与导出校验，由 check_public.py 扫描
 hand-written
   docs/a5a5.en.md

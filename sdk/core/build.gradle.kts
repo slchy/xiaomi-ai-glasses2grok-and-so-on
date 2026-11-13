@@ -18,7 +18,7 @@ kotlin {
     // 开 explicitApi 后每条 public 声明都必须自己写明可见性与返回类型，
     // 新增东西不会再「默认 public 悄悄漏出去」。
     explicitApi()
-    // ADR-008：`core` 会被 Android AAR 消费，字节码目标与 Android 模块对齐到 11
+    // 设计记录：`core` 会被 Android AAR 消费，字节码目标与 Android 模块对齐到 11
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }

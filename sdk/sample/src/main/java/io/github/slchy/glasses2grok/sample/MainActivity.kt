@@ -33,7 +33,7 @@ import java.util.Locale
 /**
  * 真机冒烟工具（`docs/` ）：连上 → 读佩戴 → 收事件 → 优雅断开。
  *
- * token 只从输入框来 —— SDK 不获取、不持久化（`ADR-008`）。**探针面板本身不保存它**；
+ * token 只从输入框来 —— SDK 不获取、不持久化（设计记录）。**探针面板本身不保存它**；
  * 保存是宿主的选择，仪表盘（[DashboardActivity]）为了不用每次重敲才存。
  */
 class MainActivity : Activity() {
@@ -423,6 +423,22 @@ class MainActivity : Activity() {
             "开始录音" to { bg("rec-start") { s -> log("startRecording=${s.startRecording()}") } },
             "停止录音" to { bg("rec-stop") { s -> log("stopRecording=${s.stopRecording()}") } },
             "媒体摘要" to { bg("media-summary") { s -> log("mediaSummary=${s.mediaSummary()}") } },
+        )
+        row(
+            // 指示灯实验：参考实现播报在手机侧，眼镜只能通过这条状态帧知道「小爱在说话」
+            "Voice 录音中" to {
+                bg("voice-rec") { s ->
+                    log("syncVoice(voice=1,operating=2)=${s.syncVoiceStatus(voice = 1, operating = 2)}")
+                }
+            },
+            "Voice TTS播报" to {
+                bg("voice-tts") { s ->
+                    log("syncVoice(tts=1)=${s.syncVoiceStatus(voice = 1, tts = 1, operating = 2)}")
+                }
+            },
+            "Voice 全 0" to {
+                bg("voice-idle") { s -> log("syncVoice(全 0)=${s.syncVoiceStatus()}") }
+            },
         )
 
         title("手势 / 设置写入")

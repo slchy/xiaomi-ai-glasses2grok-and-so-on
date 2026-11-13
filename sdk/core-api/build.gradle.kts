@@ -14,7 +14,7 @@ publishing {
 
 kotlin {
     jvmToolchain(17)
-    // ADR-008：与 `:core` / Android 模块的字节码目标一致
+    // 设计记录：与 `:core` / Android 模块的字节码目标一致
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }

@@ -309,7 +309,7 @@ listMedia(5_000)   recordStatus(3_000)  wifiConfig(3_000)  systemSetting(...)
 requestReportDataAndWait(5_000)  enableWifiApAndWait(5_000)  enableWifiP2pGcAndWait(...)
 
 // 发送（非阻塞，返回 SendResult）
-requestWearStatus()  syncTime(...)  endVoiceSession()
+requestWearStatus()  syncTime(...)  endVoiceSession()  syncVoiceStatus(...)
 capturePhoto()  capturePhotoWithIds(...)
 requestMediaFile(...)  requestMediaFileList(...)  confirmMediaFile(...)
 requestRecord(...)  startRecording(...)  stopRecording(...)

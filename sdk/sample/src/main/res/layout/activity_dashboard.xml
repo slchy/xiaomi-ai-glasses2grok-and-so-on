@@ -89,8 +89,47 @@
             android:inputType="textNoSuggestions"
             android:textSize="13sp" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/cloudHost"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:hint="云端 IP"
+                android:inputType="textNoSuggestions"
+                android:textSize="13sp" />
+
+            <EditText
+                android:id="@+id/cloudPort"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="端口"
+                android:inputType="number"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/voiceToggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="语音通道：关"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <CheckBox
+            android:id="@+id/voiceTls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TLS（信任 assets/local-ca.pem）"
+            android:textSize="13sp" />
+
         <CheckBox
             android:id="@+id/remember"
+
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="记住设备与 token"

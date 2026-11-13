@@ -29,8 +29,19 @@ android {
             isMinifyEnabled = false
         }
     }
+
+    testOptions {
+        // 高清照的相位机是纯 Kotlin（不碰 Android），单测跑在纯 JVM 上
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
     implementation(project(":facade"))
+    testImplementation(kotlin("test"))
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+    testLogging { events("passed", "failed", "skipped") }
 }

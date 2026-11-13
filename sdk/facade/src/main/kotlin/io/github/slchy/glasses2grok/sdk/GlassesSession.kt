@@ -321,6 +321,33 @@ public class GlassesSession internal constructor(
     public fun endVoiceSession(): SendResult =
         sendWearInternal(VoiceIds.TYPE, VoiceIds.ID_SYNC_STATUS, VoiceCodec.endVoicePayload())
 
+    /**
+     * 下发一条 `Voice id=5 SYNC_VOICE_STATUS`（`VoiceStatus` 六字段）。
+     *
+     * 这是参考实现用来告诉眼镜「小爱现在处于什么状态」的报文，**双向同构**：
+     * 设备也会主动上报同一结构（[GlassesEvent.Voice] 里的 `SyncStatus`）。
+     *
+     * 已知确定的行为：六个字段全 0（= [endVoiceSession]）会让眼镜立刻停止采集。
+     * **未知**：各字段与内侧/外侧指示灯的关系（`tts` 是否驱动「说话时常亮」）——
+     * 属于待实测项，别把它当稳定契约用。
+     *
+     * @param voice 0 `VOICE_IDLE` / 1 `WAKE_UP`
+     * @param tts 0 `TTS_IDLE` / 1 `TTS_PLAYING` / 2 `TTS_THINKING`
+     * @param operating 0 空闲 / 1 执行中 / 2 录音中 / 3–6 待机类
+     */
+    public fun syncVoiceStatus(
+        voice: Long = 0,
+        tts: Long = 0,
+        mediaPlay: Long = 0,
+        image: Long = 0,
+        operating: Long = 0,
+        device: Long = 0,
+    ): SendResult = sendWearInternal(
+        VoiceIds.TYPE,
+        VoiceIds.ID_SYNC_STATUS,
+        VoiceCodec.syncStatusPayload(voice, tts, mediaPlay, image, operating, device),
+    )
+
     // ------------------------------------------------------------ 直播（Interconnection, type=23）
 
     /**

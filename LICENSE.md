@@ -16,6 +16,7 @@
 | **1. 协议规范与基础帧参考**<br>`docs/`<br>`python/`<br>`tests/test_frame.py` | **[CC0 1.0 Universal](LICENSES/CC0-1.0.txt)**<br>(Public Domain) | 协议事实、帧定义（A5A5）、CRC 校验及规范文档奉献至公有领域，供任何人免许可费自由参考与学习。 |
 | **2. Android SDK 核心驱动**<br>`sdk/core-proto/`<br>`sdk/core-api/`<br>`sdk/core/`<br>`sdk/transport/`<br>`sdk/facade/`<br>`sdk/ktx/` | **[PolyForm Noncommercial 1.0.0](LICENSES/PolyForm-Noncommercial-1.0.0.txt)**<br>(Noncommercial License) | 包含纯手写 Kotlin 状态机、加解密、SAR 滑窗、蓝牙 SPP 连接与事件调度，以及随 `io.github.slchy.glasses2grok:sdk` 一起发布的契约层 `core-api` 与工具层 `core-proto`。<br>**仅限个人非商业研究、学术实验与自用 Agent 对接，严禁任何形式的商业产品化、付费分发、广告营利或收费服务。** |
 | **3. 示例与调用代码**<br>`sdk/sample/`<br>README 中的调用示例 | **[MIT License](LICENSES/MIT.txt)** | 供开发者自由复制、修改与参考如何调用 SDK API，无任何使用负担。 |
+| **4. 云端语音后端**<br>`cloud/` | **[MIT License](LICENSES/MIT.txt)** | 手机 ↔ 大模型的自建后端：mSBC 解码、判停、ASR/Agent/TTS 编排、原始档案与离线补播。<br>凭据不入库（`.env` / `tokens.txt` 均在 `.gitignore` 里），仓库只提供空模板 `.env.example`。 |
 
 ### 二、 商标与设备免责声明 (Disclaimer)
 
@@ -38,6 +39,7 @@ This project adopts a tiered multi-licensing architecture to keep protocol speci
 | **1. Protocol Specs & Reference**<br>`docs/`<br>`python/`<br>`tests/test_frame.py` | **[CC0 1.0 Universal](LICENSES/CC0-1.0.txt)**<br>(Public Domain) | Protocol facts, frame format (A5A5), CRC checks, and documentation are dedicated to the public domain for unencumbered study and reference. |
 | **2. Android SDK Core Drivers**<br>`sdk/core-proto/`<br>`sdk/core-api/`<br>`sdk/core/`<br>`sdk/transport/`<br>`sdk/facade/`<br>`sdk/ktx/` | **[PolyForm Noncommercial 1.0.0](LICENSES/PolyForm-Noncommercial-1.0.0.txt)**<br>(Noncommercial License) | Original Kotlin state machines, encryption, SAR sliding window, Bluetooth SPP transport, and event dispatchers, plus the contract layer (`core-api`) and plumbing (`core-proto`) shipped with `io.github.slchy.glasses2grok:sdk`.<br>**Strictly restricted to non-commercial research, personal experimentation, and self-hosted study. Any commercial exploitation, paid redistribution, or commercial integration is strictly prohibited.** |
 | **3. Samples & Boilerplates**<br>`sdk/sample/`<br>Snippets in README | **[MIT License](LICENSES/MIT.txt)** | Sample application and glue code are released under MIT for friction-free reference. |
+| **4. Cloud Voice Backend**<br>`cloud/` | **[MIT License](LICENSES/MIT.txt)** | Self-hosted phone ↔ LLM backend: mSBC decoding, endpointing, ASR/Agent/TTS orchestration, raw-session archiving and offline replay.<br>No credentials are shipped (`.env` / `tokens.txt` are gitignored); only the empty template `.env.example` is included. |
 
 ### 2. Trademark & Non-Affiliation Disclaimer
 

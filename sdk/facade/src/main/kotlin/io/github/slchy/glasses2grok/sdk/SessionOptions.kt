@@ -6,7 +6,7 @@ import io.github.slchy.glasses2grok.core.config.GlassesOptions
  * 会话选项。
  *
  * 没有 `token` 字段是刻意的：token 属「用户账号 ↔ 设备绑定凭据」域，
- * SDK 只接收、不产出、不持久化（`ADR-008`）。
+ * SDK 只接收、不产出、不持久化（设计记录）。
  */
 public data class SessionOptions(
     val callbackDispatcher: CallbackDispatcher = CallbackDispatcher.MainThread,

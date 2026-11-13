@@ -1,0 +1,8 @@
+node_modules/
+models/*.onnx
+dist/
+
+# 凭据与运行产物：真凭据一律不入库（模板见 .env.example）
+.env
+tokens.txt
+tmp/

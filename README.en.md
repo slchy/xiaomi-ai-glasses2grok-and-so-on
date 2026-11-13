@@ -17,6 +17,8 @@ Third-party Bluetooth SPP protocol specification and Android SDK driver implemen
 - **SDK Architecture**: See [docs/SDK-ARCHITECTURE.md](docs/SDK-ARCHITECTURE.md) (7-module decoupled architecture, lock-free concurrency model, lane backpressure, and state machine).
 - **Frame Reference Implementation (Python)**: Located at `python/a5a5.py`.
 - **Android SDK Source**: Located at `sdk/`.
+- **Self-hosted Cloud Voice Backend**: Located at `cloud/` (mSBC decode → endpointing → ASR → Agent → TTS, see below).
+- **Cloud Architecture**: see [docs/CLOUD-ARCHITECTURE.md](docs/CLOUD-ARCHITECTURE.md) (layering, concurrency model, state machines, error model, extension points).
 
 ---
 
@@ -54,8 +56,8 @@ repositories {
     google()
 }
 dependencies {
-    implementation("io.github.slchy.glasses2grok:sdk:0.2.0")
-    implementation("io.github.slchy.glasses2grok:sdk-ktx:0.2.0") // Optional: Coroutines & Flow support
+    implementation("io.github.slchy.glasses2grok:sdk:0.2.2")
+    implementation("io.github.slchy.glasses2grok:sdk-ktx:0.2.2") // Optional: Coroutines & Flow support
 }
 ```
 
@@ -118,6 +120,54 @@ cd sdk
 ./gradlew test          # all module unit tests (pure JVM simulation, no device needed)
 ./gradlew build         # additionally runs lint and assembles every AAR
 ```
+
+---
+
+## Cloud Voice Backend (optional)
+
+`sdk/` covers phone ↔ glasses; `cloud/` covers phone ↔ LLM. The phone forwards the glasses'
+uplink mSBC **as-is**; the backend decodes it, endpoints the utterance, runs ASR → agent → TTS
+and streams PCM back to the phone:
+
+> Layering, concurrency model, state machines and the error model: see
+> [docs/CLOUD-ARCHITECTURE.md](docs/CLOUD-ARCHITECTURE.md).
+
+```text
+glasses ──SPP──▶ phone (sdk/sample) ──TLS/TCP──▶ cloud/ ──▶ ASR ──▶ Agent ──▶ TTS
+                                                   └─ raw archive / offline replay / debug control
+```
+
+| Stage | Default | Pluggable |
+|---|---|---|
+| Uplink decode | `ffmpeg` (mSBC → PCM16 16 kHz) | — |
+| Endpointing | energy gate; optional SmartTurn / silero-vad (`models/`, download separately) | `SMART_TURN=0` to disable |
+| ASR | Aliyun realtime speech | `--stt canned`, or implement the `providers.ts` interface |
+| Agent | command-based agent (uses the `dsh` SDK session by default) | `--agent echo` / `--agent none` |
+| TTS | MiMo (chat-style style prompt; emotion tags switch the tone) | `--tts silent`, or implement `providers.ts` |
+
+No device and no credentials are needed to exercise the whole loop:
+
+```bash
+cd cloud
+node src/main.ts --listen 8766 --stt canned --tts silent --agent echo   # terminal 1
+node tools/fake-phone.ts --port 8766 --sbc ../some-capture.sbc          # terminal 2 (fake phone)
+```
+
+- Requires **Node 22.6+** (runs `.ts` directly: add `--experimental-strip-types` on 22.x; on by default on 23+).
+- `ffmpeg` is the only mandatory external binary; `onnxruntime-node` is loaded only when silero-vad is enabled.
+- `--sbc` takes a short mSBC recording; without it the fake phone still connects but sends no audio.
+- To wire real models: `cp .env.example .env`, fill in the ASR/TTS credentials, and swap `--stt/--tts/--agent`.
+
+**No credentials are shipped**: `.env`, `tokens.txt` and self-signed certs are gitignored;
+the repo only carries the empty `.env.example` template.
+
+Pure-logic unit tests (no network, no credentials):
+
+```bash
+node --test tests/*.test.ts
+```
+
+License: `cloud/` is released under the [MIT License](LICENSES/MIT.txt).
 
 ---
 

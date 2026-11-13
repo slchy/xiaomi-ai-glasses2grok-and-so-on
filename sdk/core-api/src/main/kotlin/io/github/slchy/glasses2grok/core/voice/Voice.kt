@@ -183,13 +183,44 @@ public object VoiceCodec {
      * （真机 `2a 0c 08 00 10 00 18 00 20 00 28 00 30 00`）。
      */
     public fun endVoicePayload(): ByteArray {
+        return syncStatusPayload()
+    }
+
+    /**
+     * 构造任意 `Voice id=5 SYNC_VOICE_STATUS` 的 `VoiceStatus`（6 字段**全部显式写出**）。
+     *
+     * 枚举见 `参考协议`的 `VoiceStatus` 字段表：
+     *
+     * | 字段 | 取值 |
+     * |---|---|
+     * | `voice` | 0 `VOICE_IDLE` / 1 `WAKE_UP` |
+     * | `tts` | 0 `TTS_IDLE` / 1 `TTS_PLAYING` / 2 `TTS_THINKING` |
+     * | `mediaPlay` | 0 空闲 / 1 播放 / 2 暂停 / 3 停止 |
+     * | `image` | 0 空闲 / 1 准备 / 2 上传中 |
+     * | `operating` | 0 空闲 / 1 执行中 / 2 录音中 / 3–6 各种待机 |
+     * | `device` | 0 在线 / 1 连接但离线 / 2 断开 |
+     *
+     * ⚠️ **字段缺席 ≠ 0**：真机实测只写 `f1` 的 `2a 02 08 00` 完全无效（`实测`
+     *），所以这里六个字段一律写出，包括等于 0 的。
+     *
+     * ⚠️ 每个字段**具体驱动设备的什么行为**尚未逐项实测。已确认的只有：六个全 0 会让
+     * 眼镜立刻停止采集。`tts`/`operating` 与内侧指示灯的关系仍是推测。
+     */
+    public fun syncStatusPayload(
+        voice: Long = 0,
+        tts: Long = 0,
+        mediaPlay: Long = 0,
+        image: Long = 0,
+        operating: Long = 0,
+        device: Long = 0,
+    ): ByteArray {
         val status = java.io.ByteArrayOutputStream()
-        Pb.uint(status, VOICE_STATUS_FIELD_VOICE, 0L) // f1 voiceStatus = VOICE_IDLE
-        Pb.uint(status, VOICE_STATUS_FIELD_TTS, 0L) // f2 ttsStatus = TTS_IDLE
-        Pb.uint(status, VOICE_STATUS_FIELD_MEDIA_PLAY, 0L) // f3 mediaPlayStatus = IDLE
-        Pb.uint(status, VOICE_STATUS_FIELD_IMAGE, 0L) // f4 imageStatus = IDLE
-        Pb.uint(status, VOICE_STATUS_FIELD_OPERATING, 0L) // f5 operatingStatus = IDLE
-        Pb.uint(status, VOICE_STATUS_FIELD_DEVICE, 0L) // f6 deviceStatus = CONNECTED_ONLINE
+        Pb.uint(status, VOICE_STATUS_FIELD_VOICE, voice) // f1 voiceStatus
+        Pb.uint(status, VOICE_STATUS_FIELD_TTS, tts) // f2 ttsStatus
+        Pb.uint(status, VOICE_STATUS_FIELD_MEDIA_PLAY, mediaPlay) // f3 mediaPlayStatus
+        Pb.uint(status, VOICE_STATUS_FIELD_IMAGE, image) // f4 imageStatus
+        Pb.uint(status, VOICE_STATUS_FIELD_OPERATING, operating) // f5 operatingStatus
+        Pb.uint(status, VOICE_STATUS_FIELD_DEVICE, device) // f6 deviceStatus
         return buildVoiceStatus(status.toByteArray())
     }
 

@@ -31,7 +31,7 @@ public sealed interface TxWindowPolicy {
     public data class Local(val window: Int = SarConfig.DEFAULT_TX_WIN_LOCAL) : TxWindowPolicy
 
     /**
-     * **SDK 默认**（`ADR-008`）：在途帧数不超过对端协商的接收窗口。
+     * **SDK 默认**（设计记录）：在途帧数不超过对端协商的接收窗口。
      *
      * 好处：永不超窗 ⇒ NAK 路径根本不会触发。
      * 代价：吞吐受限于对端窗口（实测设备给 3），大流量下靠累积 ACK 推进。

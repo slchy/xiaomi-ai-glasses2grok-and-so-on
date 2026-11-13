@@ -19,6 +19,8 @@
 - **SDK 架构与实现**：见 [docs/SDK-ARCHITECTURE.md](docs/SDK-ARCHITECTURE.md)（7 模块解耦设计、无锁并发线程模型、车道背压与状态机）。
 - **帧解析参考实现（Python）**：位于 `python/a5a5.py`。
 - **Android SDK 完整工程**：位于 `sdk/`。
+- **自建云端语音后端**：位于 `cloud/`（mSBC 解码 → 判停 → ASR → Agent → TTS，见下）。
+- **云端架构**：见 [docs/CLOUD-ARCHITECTURE.md](docs/CLOUD-ARCHITECTURE.md)（分层、并发模型、状态机、错误模型与扩展点）。
 
 ---
 
@@ -56,8 +58,8 @@ repositories {
     google()
 }
 dependencies {
-    implementation("io.github.slchy.glasses2grok:sdk:0.2.0")
-    implementation("io.github.slchy.glasses2grok:sdk-ktx:0.2.0") // 可选，提供 Kotlin 协程 / Flow 支持
+    implementation("io.github.slchy.glasses2grok:sdk:0.2.2")
+    implementation("io.github.slchy.glasses2grok:sdk-ktx:0.2.2") // 可选，提供 Kotlin 协程 / Flow 支持
 }
 ```
 
@@ -120,6 +122,51 @@ cd sdk
 ./gradlew test          # 全部模块的单测（经纯 JVM 仿真，不需要真机）
 ./gradlew build         # 额外做 lint 与各 AAR 打包
 ```
+
+---
+
+## 云端语音后端（可选）
+
+`sdk/` 管「手机 ↔ 眼镜」，`cloud/` 管「手机 ↔ 大模型」。手机把眼镜的上行 mSBC **原样**转发过来，
+云端解码 → 判停 → ASR → Agent → TTS，再把 PCM 流式推回手机播放：
+
+> 分层、并发模型、状态机与错误模型见 [docs/CLOUD-ARCHITECTURE.md](docs/CLOUD-ARCHITECTURE.md)。
+
+```text
+眼镜 ──SPP──▶ 手机（sdk/sample）──TLS/TCP──▶ cloud/ ──▶ ASR ──▶ Agent ──▶ TTS
+                                               └─ 原始档案 / 离线补播 / 调试控制口
+```
+
+| 环节 | 默认实现 | 换成别的 |
+|---|---|---|
+| 上行解码 | `ffmpeg`（mSBC → PCM16 16 kHz） | — |
+| 判停 | 能量门；可选 SmartTurn / silero-vad（`models/`，需自行下载） | `SMART_TURN=0` 关掉 |
+| ASR | 阿里云实时语音识别 | `--stt canned`（回放固定一句）或实现 `providers.ts` 的接口 |
+| Agent | 命令式 agent（默认用 `dsh` 的 SDK 会话） | `--agent echo` / `--agent none` |
+| TTS | MiMo（聊天式风格提示词：情绪标签可切语调） | `--tts silent` 或实现 `providers.ts` 的接口 |
+
+不接真机、不填任何凭据也能跑通整条链路：
+
+```bash
+cd cloud
+node src/main.ts --listen 8766 --stt canned --tts silent --agent echo   # 终端 1
+node tools/fake-phone.ts --port 8766 --sbc ../some-capture.sbc          # 终端 2（假手机）
+```
+
+- 需要 **Node 22.6+**（直接跑 `.ts`：22.x 加 `--experimental-strip-types`，23+ 默认开启）。
+- 系统里的 `ffmpeg` 是唯一必需的外部命令；`onnxruntime-node` 只在启用 silero-vad 时才加载。
+- `--sbc` 给一段 mSBC 录音即可模拟说话；不给也能连上，只是没有上行音频。
+- 接真模型：`cp .env.example .env` 填 ASR/TTS 凭据，再换掉 `--stt/--tts/--agent`。
+
+**凭据一律不入库**：`.env`、`tokens.txt`、自签证书都在 `.gitignore` 里；仓库里只有空模板。
+
+纯逻辑单测（不需要网络与凭据）：
+
+```bash
+node --test tests/*.test.ts
+```
+
+许可：`cloud/` 采用 [MIT License](LICENSES/MIT.txt)。
 
 ---
 

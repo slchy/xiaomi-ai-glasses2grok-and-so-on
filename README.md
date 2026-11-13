@@ -1,13 +1,13 @@
 # xiaomi-ai-glasses2grok-and-so-on
 
-**Third-party Bluetooth SPP protocol analysis and an Android SDK for the Xiaomi AI Glasses (M2442G1).**
+**Third-party Bluetooth protocol analysis, Android SDK and cloud voice backend for the Xiaomi AI Glasses (M2442G1): talk to any LLM.**
 
 [English](README.en.md)<br>
 [演示视频](https://www.bilibili.com/video/BV1jn456gEeQ/)
 
 [![CI](https://github.com/slchy/xiaomi-ai-glasses2grok-and-so-on/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/slchy/xiaomi-ai-glasses2grok-and-so-on/actions/workflows/ci.yml)
 
-针对小米 AI 智能眼镜（型号 M2442G1）的第三方蓝牙 SPP 通信协议解析与 Android SDK 驱动实现。
+针对小米 AI 智能眼镜（型号 M2442G1）的第三方蓝牙 SPP 通信协议解析、Android SDK 与云端语音后端，可接入任意大模型，做成自定义语音助手。
 
 ---
 

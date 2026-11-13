@@ -5,7 +5,7 @@
 
 [![CI](https://github.com/slchy/xiaomi-ai-glasses2grok-and-so-on/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/slchy/xiaomi-ai-glasses2grok-and-so-on/actions/workflows/ci.yml)
 
-Third-party Bluetooth SPP protocol specification and Android SDK driver implementation for Xiaomi AI Glasses (Model M2442G1).
+Third-party Bluetooth SPP protocol specification, Android SDK driver and cloud voice backend for Xiaomi AI Glasses (Model M2442G1): talk to any LLM as a custom voice assistant.
 
 ---
 

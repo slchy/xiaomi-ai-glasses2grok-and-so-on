@@ -192,11 +192,6 @@ class DashboardActivity : Activity() {
     }
 
     private fun connect() {
-        val token = parseToken(tokenInput.text.toString())
-        if (token == null) {
-            toast("token 必须是 32 位 hex")
-            return
-        }
         val device = devices.getOrNull(spinner.selectedItemPosition) ?: run {
             toast("先配对一台眼镜")
             return
@@ -209,10 +204,16 @@ class DashboardActivity : Activity() {
         firmware = "—"
         model = "—"
         battery = "—"
-        persist(device, tokenInput.text.toString())
 
         log("连接 ${device.name ?: device.address}")
-        val s = GlassesSession.open(this, device, token, SessionOptions())
+        val s = try {
+            // 门面自己解 hex（B-001），这里不再抄一份 parseToken
+            GlassesSession.open(this, device, tokenInput.text.toString(), SessionOptions())
+        } catch (e: IllegalArgumentException) {
+            toast("token 必须是 32 位 hex：${e.message}")
+            return
+        }
+        persist(device, tokenInput.text.toString())
         s.setListener { event -> main.post { onEvent(event) } }
         session = s
         sessionBox.visibility = LinearLayout.VISIBLE
@@ -401,15 +402,4 @@ class DashboardActivity : Activity() {
     }
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
-
-    /** 32 位 hex，忽略空格与冒号。 */
-    private fun parseToken(text: String): ByteArray? {
-        val clean = text.trim().replace(" ", "").replace(":", "")
-        if (clean.length != 32) return null
-        return try {
-            ByteArray(16) { clean.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
-        } catch (e: NumberFormatException) {
-            null
-        }
-    }
 }

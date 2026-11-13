@@ -97,6 +97,42 @@ public class GlassesSession internal constructor(
             return openWith({ AndroidSppLink(device, appContext, adapter) }, token16, options)
         }
 
+        /**
+         * 同 [open]，但接受 32 位 hex 字符串（token 的常见存法）。
+         *
+         * 宿主拿到的 token 几乎总是 hex 文本；早先每个宿主都得自己抄一份解码器
+         * （`sdk/sample` 里就抄了两份）。空格与冒号会被忽略：
+         * `"0123 4567:89ab…"` 与 `"0123456789ab…"` 等价。
+         *
+         * @throws IllegalArgumentException token 不是 32 位 hex（或含非 hex 字符）
+         */
+        public fun open(
+            context: Context,
+            device: BluetoothDevice,
+            tokenHex: String,
+            options: SessionOptions = SessionOptions(),
+        ): GlassesSession = open(context, device, parseTokenHex(tokenHex), options)
+
+        /** 解析 32 位 hex token；忽略空格与冒号，其余非法输入抛 [IllegalArgumentException]。 */
+        internal fun parseTokenHex(tokenHex: String): ByteArray {
+            val clean = tokenHex.replace(" ", "").replace(":", "").trim()
+            require(clean.length == TOKEN_SIZE * 2) {
+                "tokenHex 必须是 ${TOKEN_SIZE * 2} 位 hex，实际 ${clean.length} 位（已忽略空格与冒号）"
+            }
+            return ByteArray(TOKEN_SIZE) { i ->
+                val hi = hexDigit(clean[i * 2])
+                val lo = hexDigit(clean[i * 2 + 1])
+                ((hi shl 4) or lo).toByte()
+            }
+        }
+
+        private fun hexDigit(c: Char): Int = when (c) {
+            in '0'..'9' -> c - '0'
+            in 'a'..'f' -> c - 'a' + 10
+            in 'A'..'F' -> c - 'A' + 10
+            else -> throw IllegalArgumentException("tokenHex 含非 hex 字符 '$c'")
+        }
+
         internal fun openWith(
             newLink: () -> SppLink,
             token16: ByteArray,

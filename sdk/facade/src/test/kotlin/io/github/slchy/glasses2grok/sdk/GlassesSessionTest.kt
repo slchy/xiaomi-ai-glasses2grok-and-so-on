@@ -148,4 +148,54 @@ class GlassesSessionTest {
             session.close()
         }
     }
+
+    // ---------------------------------------------------------------- tokenHex
+
+    @Test
+    fun `parseTokenHex 接受 32 位 hex`() {
+        val bytes = GlassesSession.parseTokenHex("00112233445566778899aabbccddeeff")
+        assertEquals(16, bytes.size)
+        assertEquals(0x4a, bytes[0].toInt() and 0xFF)
+        assertEquals(0x92, bytes[15].toInt() and 0xFF)
+    }
+
+    @Test
+    fun `parseTokenHex 忽略空格与冒号`() {
+        val compact = GlassesSession.parseTokenHex("00112233445566778899aabbccddeeff")
+        val spaced = GlassesSession.parseTokenHex("4aa7 a621 3502 b9a0 d1e6 27ea 053b 7c92")
+        // 冒号按 4 位一组：按 2 位一组会拼出 `xx:xx:xx:xx:xx:xx`，被公开仓的 MAC 泄漏扫描
+        // 误判成真地址（那条规则宁严勿松，改测试比放宽门禁便宜）
+        val dotted = GlassesSession.parseTokenHex("4aa7:a621:3502:b9a0:d1e6:27ea:053b:7c92")
+        assertTrue(compact.contentEquals(spaced), "空格应被忽略")
+        assertTrue(compact.contentEquals(dotted), "冒号应被忽略")
+    }
+
+    @Test
+    fun `parseTokenHex 长度不是 32 位就抛`() {
+        assertFailsWith<IllegalArgumentException> { GlassesSession.parseTokenHex("") }
+        assertFailsWith<IllegalArgumentException> {
+            GlassesSession.parseTokenHex("4aa7a6213502b9a0d1e627ea053b7c9")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            GlassesSession.parseTokenHex("00112233445566778899aabbccddeeff00")
+        }
+    }
+
+    @Test
+    fun `parseTokenHex 含非 hex 字符就抛`() {
+        val e = assertFailsWith<IllegalArgumentException> {
+            GlassesSession.parseTokenHex("4aa7a6213502b9a0d1e627ea053b7c9z")
+        }
+        assertTrue(e.message.orEmpty().contains("z"), "报错要指出哪个字符不合法：${e.message}")
+    }
+
+    @Test
+    fun `tokenHex 重载与 ByteArray 重载等价 - 非法输入同样抛`() {
+        // 只验参数校验这一层：真正的 open 需要 Android BluetoothDevice，纯 JVM 造不出来
+        assertEquals(
+            GlassesSession.parseTokenHex("00112233445566778899aabbccddeeff").toList(),
+            ByteArray(16) { (it * 0x11).toByte() }.toList(),
+        )
+        assertFailsWith<IllegalArgumentException> { GlassesSession.parseTokenHex("not-a-token") }
+    }
 }

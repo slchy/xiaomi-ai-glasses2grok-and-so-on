@@ -33,7 +33,8 @@ import java.util.Locale
 /**
  * 真机冒烟工具（`docs/` ）：连上 → 读佩戴 → 收事件 → 优雅断开。
  *
- * token 只从输入框来 —— SDK 不获取、不持久化（`ADR-008`）。这个 App 也不保存它。
+ * token 只从输入框来 —— SDK 不获取、不持久化（`ADR-008`）。**探针面板本身不保存它**；
+ * 保存是宿主的选择，仪表盘（[DashboardActivity]）为了不用每次重敲才存。
  */
 class MainActivity : Activity() {
 
@@ -332,10 +333,6 @@ class MainActivity : Activity() {
     }
 
     private fun connect() {
-        val token = parseToken(tokenInput.text.toString()) ?: run {
-            Toast.makeText(this, "token 必须是 32 位 hex", Toast.LENGTH_SHORT).show()
-            return
-        }
         val device = devices.getOrNull(spinner.selectedItemPosition) ?: run {
             Toast.makeText(this, "先选一台已配对设备", Toast.LENGTH_SHORT).show()
             return
@@ -343,12 +340,13 @@ class MainActivity : Activity() {
 
         session?.close()
         log("open(${device.name} ${device.address})")
-        val s = GlassesSession.open(
-            this,
-            device,
-            token,
-            SessionOptions(diagnostics = true),
-        )
+        val s = try {
+            // 门面自己解 hex（B-001），这里不再抄一份 parseToken
+            GlassesSession.open(this, device, tokenInput.text.toString(), SessionOptions(diagnostics = true))
+        } catch (e: IllegalArgumentException) {
+            Toast.makeText(this, "token 必须是 32 位 hex：${e.message}", Toast.LENGTH_SHORT).show()
+            return
+        }
         s.setListener { event -> runOnUiThread { onEvent(event) } }
         session = s
     }
@@ -1359,16 +1357,6 @@ class MainActivity : Activity() {
     /** 全量 hex（不加省略），只给实验期需要看完整载荷的少数链路用。 */
     private fun hexFull(bytes: ByteArray): String =
         bytes.joinToString(" ") { String.format(Locale.US, "%02x", it) }
-
-    private fun parseToken(text: String): ByteArray? {
-        val clean = text.trim().replace(" ", "").replace(":", "")
-        if (clean.length != 32) return null
-        return try {
-            ByteArray(16) { i -> clean.substring(i * 2, i * 2 + 2).toInt(16).toByte() }
-        } catch (e: NumberFormatException) {
-            null
-        }
-    }
 
     private fun log(line: String) {
         // 同时进 logcat —— 真机跑长流程时比 uiautomator dump 方便得多

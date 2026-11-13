@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-13T06:20:00Z
+exported-at    2026-11-13T11:05:33Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符
@@ -102,17 +102,17 @@ files
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/EventDispatcher.kt d48d0b9ff1461cd0
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/GlassesEventSource.kt de653e87b0097263
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/GlassesListener.kt b05fccc79b9e7cf5
-  sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/GlassesSession.kt 9ab7256b256e1735
+  sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/GlassesSession.kt 947d8e6549d72acc
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/P2pGroupOwner.kt 18bd31a0b380d106
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/SendResult.kt dbaa772e5b302420
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/SessionOptions.kt 14329022ddac870f
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/SettingWriteResult.kt ce86d95e1f5821f8
   sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/CallbackQueueTest.kt 7dcab8d90d8c9046
-  sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/GlassesSessionTest.kt c5d24512e0c7662f
+  sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/GlassesSessionTest.kt 882ec6618d6a0f32
   sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/SendResultTest.kt d86867d1e30a3508
   sdk/gradle/wrapper/gradle-wrapper.jar                                  2db75c40782f5e8b
   sdk/gradle/wrapper/gradle-wrapper.properties                           2caec011a749b18a
-  sdk/gradle.properties                                                  446eaa88c7820939
+  sdk/gradle.properties                                                  6f1462709b50c5d9
   sdk/gradlew                                                            a3648413b47ef77a
   sdk/gradlew.bat                                                        57931b17dd228e5c
   sdk/ktx/build.gradle.kts                                               0d9e3f6f1d5e70c9
@@ -122,8 +122,8 @@ files
   sdk/README.md                                                          67eeaa393c738a66
   sdk/sample/build.gradle.kts                                            75e0697df310f97f
   sdk/sample/src/main/AndroidManifest.xml                                dcf6d0b2b2e98279
-  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/DashboardActivity.kt fdc7c8e0da040806
-  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/MainActivity.kt 7ff7757b4e509f2c
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/DashboardActivity.kt 5038fb859bd57fe5
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/MainActivity.kt 201ac353ac12da40
   sdk/sample/src/main/res/layout/activity_dashboard.xml                  d3e683fe7671dff0
   sdk/sample/src/main/res/layout/activity_main.xml                       928f05161757c12b
   sdk/settings.gradle.kts                                                78d9d2adf59ab1d8
@@ -163,4 +163,5 @@ hand-written
   README.en.md
   README.md
   release-notes/v0.1.1.md
+  release-notes/v0.2.0.md
   tests/test_frame.py

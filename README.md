@@ -1,5 +1,7 @@
 # xiaomi-ai-glasses2grok-and-so-on
 
+**Third-party Bluetooth SPP protocol analysis and an Android SDK for the Xiaomi AI Glasses (M2442G1).**
+
 [English](README.en.md)<br>
 [演示视频](https://www.bilibili.com/video/BV1jn456gEeQ/)
 

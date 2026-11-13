@@ -155,17 +155,18 @@ class GlassesSessionTest {
     fun `parseTokenHex 接受 32 位 hex`() {
         val bytes = GlassesSession.parseTokenHex("00112233445566778899aabbccddeeff")
         assertEquals(16, bytes.size)
-        assertEquals(0x4a, bytes[0].toInt() and 0xFF)
-        assertEquals(0x92, bytes[15].toInt() and 0xFF)
+        assertEquals(0x00, bytes[0].toInt() and 0xFF)
+        assertEquals(0x11, bytes[1].toInt() and 0xFF)
+        assertEquals(0xff, bytes[15].toInt() and 0xFF)
     }
 
     @Test
     fun `parseTokenHex 忽略空格与冒号`() {
         val compact = GlassesSession.parseTokenHex("00112233445566778899aabbccddeeff")
-        val spaced = GlassesSession.parseTokenHex("4aa7 a621 3502 b9a0 d1e6 27ea 053b 7c92")
+        val spaced = GlassesSession.parseTokenHex("0011 2233 4455 6677 8899 aabb ccdd eeff")
         // 冒号按 4 位一组：按 2 位一组会拼出 `xx:xx:xx:xx:xx:xx`，被公开仓的 MAC 泄漏扫描
-        // 误判成真地址（那条规则宁严勿松，改测试比放宽门禁便宜）
-        val dotted = GlassesSession.parseTokenHex("4aa7:a621:3502:b9a0:d1e6:27ea:053b:7c92")
+        // 误判成真地址（那条规则宁严勿松，改测试数据比放宽门禁便宜）
+        val dotted = GlassesSession.parseTokenHex("0011:2233:4455:6677:8899:aabb:ccdd:eeff")
         assertTrue(compact.contentEquals(spaced), "空格应被忽略")
         assertTrue(compact.contentEquals(dotted), "冒号应被忽略")
     }
@@ -174,17 +175,17 @@ class GlassesSessionTest {
     fun `parseTokenHex 长度不是 32 位就抛`() {
         assertFailsWith<IllegalArgumentException> { GlassesSession.parseTokenHex("") }
         assertFailsWith<IllegalArgumentException> {
-            GlassesSession.parseTokenHex("4aa7a6213502b9a0d1e627ea053b7c9")
+            GlassesSession.parseTokenHex("00112233445566778899aabbccddeef")
         }
         assertFailsWith<IllegalArgumentException> {
-            GlassesSession.parseTokenHex("00112233445566778899aabbccddeeff00")
+            GlassesSession.parseTokenHex("00112233445566778899aabbccddeef200")
         }
     }
 
     @Test
     fun `parseTokenHex 含非 hex 字符就抛`() {
         val e = assertFailsWith<IllegalArgumentException> {
-            GlassesSession.parseTokenHex("4aa7a6213502b9a0d1e627ea053b7c9z")
+            GlassesSession.parseTokenHex("00112233445566778899aabbccddeefz")
         }
         assertTrue(e.message.orEmpty().contains("z"), "报错要指出哪个字符不合法：${e.message}")
     }

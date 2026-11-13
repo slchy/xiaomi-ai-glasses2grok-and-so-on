@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-13T11:05:33Z
+exported-at    2026-11-13T11:10:20Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符
@@ -108,7 +108,7 @@ files
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/SessionOptions.kt 14329022ddac870f
   sdk/facade/src/main/kotlin/io/github/slchy/glasses2grok/sdk/SettingWriteResult.kt ce86d95e1f5821f8
   sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/CallbackQueueTest.kt 7dcab8d90d8c9046
-  sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/GlassesSessionTest.kt 882ec6618d6a0f32
+  sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/GlassesSessionTest.kt 082c042c0372a4f6
   sdk/facade/src/test/kotlin/io/github/slchy/glasses2grok/sdk/SendResultTest.kt d86867d1e30a3508
   sdk/gradle/wrapper/gradle-wrapper.jar                                  2db75c40782f5e8b
   sdk/gradle/wrapper/gradle-wrapper.properties                           2caec011a749b18a

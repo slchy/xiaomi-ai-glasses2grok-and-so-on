@@ -123,6 +123,64 @@ class GlassesSessionTest {
         assertTrue(events.any { it is GlassesEvent.StateChanged && it.state == SessionState.CLOSED })
     }
 
+    // ---------------------------------------------------------------- 多订阅
+    // `events()` / `audio()` / `awaitReady()` 能并存的前提是门面这层支持多 listener：
+    // ktx 的三个 flow 各自 addListener，取消时只摘自己。这三条把门面的承诺钉住。
+
+    private fun closedCount(events: List<GlassesEvent>): Int =
+        events.count { it is GlassesEvent.StateChanged && it.state == SessionState.CLOSED }
+
+    @Test
+    fun `多订阅 - 两个 listener 都收到终态事件`() {
+        val a = Collections.synchronizedList(mutableListOf<GlassesEvent>())
+        val b = Collections.synchronizedList(mutableListOf<GlassesEvent>())
+        val session = open(FakeLink())
+        session.addListener { a += it }
+        session.addListener { b += it }
+
+        // 收尾必发终态 CLOSED —— 挂上监听之后唯一确定性的事件，不用赌调度
+        session.closeAndWait()
+
+        assertEquals(1, closedCount(a), "第一个订阅应收到 CLOSED")
+        assertEquals(1, closedCount(b), "第二个订阅也必须收到（早先单 AtomicReference 时后者顶掉前者）")
+    }
+
+    @Test
+    fun `多订阅 - removeListener 只摘自己`() {
+        val a = Collections.synchronizedList(mutableListOf<GlassesEvent>())
+        val b = Collections.synchronizedList(mutableListOf<GlassesEvent>())
+        val session = open(FakeLink())
+        session.addListener { a += it }
+        val removed = GlassesListener { b += it }
+        session.addListener(removed)
+        session.removeListener(removed)
+
+        session.closeAndWait()
+
+        assertEquals(1, closedCount(a), "没被摘的订阅应继续收到")
+        // 只断言「终态没收到」：建连初期的 CONNECTING/HANDSHAKING 可能在摘除前就落到 b 里，
+        // 那是调度先后，不是退订失效
+        assertEquals(0, closedCount(b), "退订后不该再收到终态事件，实际 ${closedCount(b)} 条")
+    }
+
+    @Test
+    fun `多订阅 - setListener 是替换语义`() {
+        val a = Collections.synchronizedList(mutableListOf<GlassesEvent>())
+        val c = Collections.synchronizedList(mutableListOf<GlassesEvent>())
+        val session = open(FakeLink())
+        session.addListener { a += it }
+        session.setListener { c += it }
+
+        session.closeAndWait()
+
+        assertEquals(
+            0,
+            closedCount(a),
+            "setListener 必须清掉 addListener 挂的订阅（ktx flow 会一起哑掉），实际 ${closedCount(a)} 条",
+        )
+        assertEquals(1, closedCount(c), "替换进去的那个要收到")
+    }
+
     @Test
     fun `token 必须是 16 字节`() {
         assertFailsWith<IllegalArgumentException> {

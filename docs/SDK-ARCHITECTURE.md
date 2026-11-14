@@ -389,7 +389,15 @@ session.audio().collect { chunk -> ... }       // Flow<ByteArray>（只放行 Au
 session.awaitReady(timeoutMs = 15_000)         // 挂起到 READY；超时抛 SdkTimeoutException
 ```
 
-> `events()` 与 `audio()` 各自 `setListener` —— 同时用会互相顶掉，只能留一个。
+> **三者可以同时用。** 每个 flow 各自 `addListener`、取消收集时只 `removeListener` 自己那个，
+> `events()` / `audio()` / `awaitReady()` 并存互不干扰（`audio()` 就是 `events()` 里过滤
+> `Audio` 的便捷流，同时订阅时同一个事件会按各自 listener 各派发一次）。
+>
+> ⚠️ 真正的坑是 **`setListener(x)` 是「替换」语义**：它清空**全部**订阅，包括 flow 挂上的那些。
+> 宿主自己要加回调请用 `addListener(x)`；同理别在想退订某个 flow 时用 `setListener(null)`
+> （那会把所有订阅一起摘掉，包括别人正在收的）。
+>
+> 早先 ktx 也走 `setListener`，那时确实是「后挂的顶掉先挂的」—— 那条限制已经不成立。
 
 ---
 

@@ -62,6 +62,18 @@ export function cleanForSpeech(text: string): string {
   // 再写一个，那些会被原样念出来（「方括号开心」）。标签表来自 `emotion.ts`，
   // 这里不重复抄写。
   return stripEmotionTags(text)
+    // 模型偶尔用实体代替字符，最常漏的是零宽空格（`&#8203;`）—— 字面送进 TTS
+    // 会被念成「ampersand hash…」，所以先在**文本层**把它们清掉，别指望合成器忽略
+    .replace(/&#(?:8203|8204|8205|65279);/g, '')
+    .replace(/&#x(?:200b|200c|200d|feff);/gi, '')
+    .replace(/[\u200b-\u200f\u2060\ufeff]/g, '')
+    // 命名实体按最常见的几个还原：`&nbsp;` 先变空格，交给下面的中文空格规则处理
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&amp;/g, '&') // 最后做，避免 `&amp;lt;` 被解两次
     .replace(/```[\s\S]*?```/g, '')          // 代码块整块丢掉
     .replace(/`([^`]+)`/g, '$1')             // 行内代码留内容
     .replace(/^#{1,6}\s+/gm, '')             // 标题
@@ -73,6 +85,13 @@ export function cleanForSpeech(text: string): string {
     .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')  // emoji
     .replace(/\n{2,}/g, '\n')
     .replace(/[ \t]{2,}/g, ' ')
+    // 两个中日韩字符之间的空格没有语义，只会让合成器塞一个停顿 —— 而这种空格
+    // 几乎都是「为了写 markdown 才加的」（`和 + 反引号代码`）。英文 / 数字 /
+    // 代码段两侧的空格有语义（`看这个 npm run build 命令`），一律不动。
+    .replace(
+      /(?<=[\u3000-\u303f\u4e00-\u9fff\uff00-\uffef])[ \t\u3000]+(?=[\u3000-\u303f\u4e00-\u9fff\uff00-\uffef])/g,
+      '',
+    )
     .trim();
 }
 

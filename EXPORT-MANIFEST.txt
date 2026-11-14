@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-14T06:52:38Z
+exported-at    2026-11-14T06:55:12Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符
@@ -28,7 +28,7 @@ files
   cloud/scripts/push-sbc.mjs                                             6f352e21a1ef0078
   cloud/smart_turn/server.py                                             633ca8512d69588b
   cloud/smart_turn/whisper_features.py                                   139b047d10dee42a
-  cloud/src/agent.ts                                                     c94c276e8aa449f1
+  cloud/src/agent.ts                                                     0ec896685972f2d3
   cloud/src/aliyun-asr.ts                                                98d10a00d9072775
   cloud/src/aliyun-session.ts                                            088cb9ab99e701fe
   cloud/src/announce-store.ts                                            2755bb41fd11b039
@@ -65,12 +65,12 @@ files
   cloud/tests/fsm-verify.ts                                              a3504615bf4be08f
   cloud/tests/hq-intent.test.ts                                          c053404bc389d73e
   cloud/tests/photo-await.test.ts                                        0758113cc06091d4
-  cloud/tests/prompt-boundary.test.ts                                    560fe089b861cda5
+  cloud/tests/prompt-boundary.test.ts                                    21441d57982e6714
   cloud/tests/session-core.test.ts                                       c56fa1bbd37be5aa
   cloud/tests/spontaneous.test.ts                                        a2a9bc51d21782f7
   cloud/tools/fake-phone.ts                                              ac7d36aaac90669a
   cloud/tsconfig.json                                                    fe13db2594418b66
-  docs/CLOUD-ARCHITECTURE.md                                             56a9a59ab2f04b46
+  docs/CLOUD-ARCHITECTURE.md                                             391df74252016158
   sdk/.gitignore                                                         cf6a78c3a71b9328
   sdk/build.gradle.kts                                                   c3f8667075894276
   sdk/core/build.gradle.kts                                              141dae468006d1ed

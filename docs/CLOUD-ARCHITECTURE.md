@@ -85,7 +85,7 @@ main.ts ──▶ aliyun-session ──┬──▶ transport ──▶ frame
 |---|---|---|
 | `aliyun-asr.ts` | 阿里云 NLS 实时识别客户端（WebSocket） | 消息 id / task id 必须是 32 位纯十六进制；连接由能量门按需拉起 |
 | `mimo.ts` | MiMo 的 ASR 与 TTS（SSE 流式） | 上行 16 kHz、下行 **24 kHz**；TTS 是"聊天式"：风格进 `user`、正文进 `assistant` |
-| `agent.ts` | `VoiceAgent`：人设提示词 → 模型 → 剥情绪标签 → 清洗成可朗读文本 → 播报出口 | 清洗是必须的：TTS 会把 markdown 原样念出来 |
+| `agent.ts` | `VoiceAgent`：人设提示词 → 模型 → 剥情绪标签 → 清洗成可朗读文本 → 播报出口 | 清洗是必须的：TTS 会把 markdown 原样念出来。`cleanForSpeech` 还负责两类**看不见**的脏东西：零宽字符及其 HTML 实体（`&#8203;` 字面送进去会被念成符号）、以及两个中日韩字符之间的空格（那不是停顿标记，只会让合成器塞一个假停顿；英文 / 数字 / 代码段两侧的空格有语义，不动） |
 | `session.ts` | `DshSession`：把文本交给 agent 进程（NDJSON），续会话、取 usage、接住**自发轮次** | 单轮等待上限 180 s；超出必须抛错**并说出来**，不许静默 |
 
 ### 2.4 决策层（纯逻辑）

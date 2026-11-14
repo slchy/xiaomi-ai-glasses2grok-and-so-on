@@ -299,6 +299,9 @@ public class GlassesSession internal constructor(
      * 对齐参考实现：容器是 `Voice.f11`（**不是 f1**，f1 是
      * `INSTRUCTION_LIST`）、`cmd=5` 写死、`requestId` 默认等于 `transactionId`。
      *
+     * **真机闭环（实测）**：发出后 0.62 s 开始推实时 mSBC，无上行
+     * `OpenDevice` —— 手机侧可以主动开麦。连续推流实测 ≥29.5 s。
+     *
      * @param transactionId 会话事务 id，建议 32 字符小写 hex
      * @param requestId 默认与 `transactionId` 相同（参考实现行为）
      */

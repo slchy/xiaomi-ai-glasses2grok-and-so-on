@@ -273,12 +273,16 @@ public class SessionEngine(
      * 参考实现触发链：AI SDK 发 `VoiceEventName.START_LISTENING` →
      * `GlassesDeviceProxy.handleVoiceEvent` → `IMiWearModuleApi.wakeupDevice()` → 本帧。
      *
-     * 首版（2026-11-14）按 `Voice.f1` 发、requestId 留空，设备 ACK 后**静默忽略** ——
-     * 字段 1 是 `INSTRUCTION_LIST`。
+     * **真机闭环（2026-11-14，`实测`）**：发出后 **0.62 s** 内眼镜开始推实时
+     * mSBC，全程无上行 `OpenDevice`；实测连续推流 ≥29.5 s，落盘解码得 14.69 s 真实环境声。
+     * 也就是说**手机侧可以主动开麦**，不必等用户长按或唤醒词。
+     *
+     * 首版（同一天）按 `Voice.f1` 发、requestId 留空，设备 ACK 后**静默忽略** ——
+     * 字段 1 是 `INSTRUCTION_LIST`，整帧从 74 B 缩到 42 B。
      *
      * @param transactionId 会话事务 id，建议 32 字符小写 hex
      * @param requestId 默认与 `transactionId` 相同（参考实现行为）
-     * @returns 是否排进发送队列 —— **≠ 眼镜接受了**
+     * @returns 是否排进发送队列；`Queued` + 0.6 s 后出现音频帧才算成功
      */
     public fun requestWakeUp(transactionId: String, requestId: ByteArray? = null): Boolean =
         sendWearPacket(

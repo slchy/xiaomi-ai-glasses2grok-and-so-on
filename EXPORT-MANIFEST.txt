@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-14T06:43:57Z
+exported-at    2026-11-14T06:52:38Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符
@@ -14,8 +14,8 @@ transforms
   - tests/golden/vectors.txt：用 mock token 重新生成
   - 云侧：部署地址 / 个人目录 / 内网网段换成占位；凭据、模型二进制、早期原型不导出
 files
-  cloud/.env.example                                                     1e52ced1094716e7
-  cloud/.gitignore                                                       804cd723d4102448
+  cloud/.env.example                                                     a87a5c9674338b9b
+  cloud/.gitignore                                                       07a5ece9dc8fdc5b
   cloud/mcp/camera.yml                                                   adafec541f319d95
   cloud/mcp/mcp-camera.mjs                                               419353fb3c038572
   cloud/mcp/mcp-session.mjs                                              cb2e8f99e21e0b98
@@ -71,7 +71,7 @@ files
   cloud/tools/fake-phone.ts                                              ac7d36aaac90669a
   cloud/tsconfig.json                                                    fe13db2594418b66
   docs/CLOUD-ARCHITECTURE.md                                             56a9a59ab2f04b46
-  sdk/.gitignore                                                         72dca7e4edbe14a0
+  sdk/.gitignore                                                         cf6a78c3a71b9328
   sdk/build.gradle.kts                                                   c3f8667075894276
   sdk/core/build.gradle.kts                                              141dae468006d1ed
   sdk/core/src/main/kotlin/io/github/slchy/glasses2grok/core/control/ControlRouter.kt 404b2a81524188b1
@@ -174,12 +174,12 @@ files
   sdk/gradle/wrapper/gradle-wrapper.properties                           2caec011a749b18a
   sdk/gradle.properties                                                  30850dd91d5f611e
   sdk/gradlew                                                            a3648413b47ef77a
-  sdk/gradlew.bat                                                        57931b17dd228e5c
+  sdk/gradlew.bat                                                        2209f919a22528af
   sdk/ktx/build.gradle.kts                                               0d9e3f6f1d5e70c9
   sdk/ktx/src/main/AndroidManifest.xml                                   c8fe08b06e479efc
   sdk/ktx/src/main/kotlin/io/github/slchy/glasses2grok/sdk/ktx/GlassesFlow.kt cf15edd71d7fad33
   sdk/ktx/src/test/kotlin/io/github/slchy/glasses2grok/sdk/ktx/GlassesFlowTest.kt 2ba7fe87c34cb684
-  sdk/README.md                                                          67eeaa393c738a66
+  sdk/README.md                                                          9a41c583e0abdf67
   sdk/sample/build.gradle.kts                                            2b37bef5ec0be5f5
   sdk/sample/src/main/AndroidManifest.xml                                dcf6d0b2b2e98279
   sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/DashboardActivity.kt 0870443c3c7b4d6d
@@ -212,11 +212,16 @@ files
   sdk/transport/src/test/kotlin/io/github/slchy/glasses2grok/transport/EnginePumpTest.kt 480afe8e6ae34128
   sdk/transport/src/test/kotlin/io/github/slchy/glasses2grok/transport/RxGapTrackerTest.kt 2001bbc9c58598bc
   sdk/transport/src/test/kotlin/io/github/slchy/glasses2grok/transport/SessionDriverTest.kt 2744de70b9a66a17
+  tests/golden/vectors.txt                                               04655690cc07d4f7
 
 scope
   - 本清单逐文件校验的是 sdk/、cloud/ 与 tests/golden/vectors.txt（上面 files 段）
   - 下面列的是公开仓手写文件：不参与导出校验，由 check_public.py 扫描
 hand-written
+  .github/workflows/ci.yml
+  .github/workflows/release.yml
+  .github/workflows/tag.yml
+  .gitignore
   docs/a5a5.en.md
   docs/a5a5.md
   docs/CAPABILITY-MATRIX.md

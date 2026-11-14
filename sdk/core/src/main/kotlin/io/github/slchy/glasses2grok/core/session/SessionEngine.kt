@@ -266,17 +266,18 @@ public class SessionEngine(
         sendWearPacket(TYPE_SYSTEM, ID_GET_WEAR_STATUS, ByteArray(0)) == ErrorCode.NONE
 
     /**
-     * **尝试**让眼镜主动进入语音态：`Voice`(14) id=10 `WakeUpEvent`（手机 → 眼镜方向）。
+     * **请求**眼镜进入语音态：`Voice`(14) id=10 `WakeUpEvent`。
      *
-     * ⚠ **未验证能力，别在文档里当成已实现。** 已知的三条事实：
-     * - 参考实现在发 `Voice id=4` 拍照请求前会先发这一帧（实测），
-     *   但那个上下文是"建立 Voice 会话"，不是"唤醒语音助手"。
-     * - `Voice` id=5 的 `f1=2`（开始）与静态枚举冲突，已证伪不实现
-     *   （实测）。
-     * - 上行 `id=10` 用 `f11`，下行用 `f1`；写错方向设备**完全不响应**。
+     * 字段号、cmd、requestId 全部对齐参考实现（见
+     * {@link io.github.slchy.glasses2grok.core.voice.VoiceCodec.buildWakeUp} 的 KDoc）。
+     * 参考实现触发链：AI SDK 发 `VoiceEventName.START_LISTENING` →
+     * `GlassesDeviceProxy.handleVoiceEvent` → `IMiWearModuleApi.wakeupDevice()` → 本帧。
      *
-     * @param transactionId 会话事务 ID，建议 32 位十六进制
-     * @param requestId 可为 null
+     * 首版（2026-11-14）按 `Voice.f1` 发、requestId 留空，设备 ACK 后**静默忽略** ——
+     * 字段 1 是 `INSTRUCTION_LIST`。
+     *
+     * @param transactionId 会话事务 id，建议 32 字符小写 hex
+     * @param requestId 默认与 `transactionId` 相同（参考实现行为）
      * @returns 是否排进发送队列 —— **≠ 眼镜接受了**
      */
     public fun requestWakeUp(transactionId: String, requestId: ByteArray? = null): Boolean =

@@ -8,9 +8,13 @@ import io.github.slchy.glasses2grok.core.pb.Pb
  *
  * 所有结构都来自 2026-11-10 真机抓到的原样回包（实测），不是推测。
  *
- * ⚠️ **`id` 是双向的，字段号按方向不同**：本文只处理上行。
- * 手机→眼镜的 `id=10 WakeUpEvent` 用的是 `f1`（实测），
- * 而设备→手机的 `id=10` 用的是 `f11` —— 混用会导致设备完全不响应。
+ * ⚠️ **`id` 是双向的，字段号相同**：`id=10` 两个方向都是 `Voice.f11`。
+ *
+ * 早先这里写着"手机→眼镜用 `f1`、设备→手机用 `f11`，混用设备不响应"——**那是错的**，
+ * 它把 `WearPacket.f1 = 14`（type 字段）误当成 `Voice` 的字段号。权威出处见
+ * `参考协议`（命令 id 10 → payload field 11）与
+ * `protobuf 消息类.setWakeupEvent`（`载荷类型 = 0xb`）。2026-11-14 按 f1 发的
+ * 唤醒帧被设备静默忽略，正是这个错误的结果。
  */
 public object VoiceIds {
     public const val TYPE: Int = GlassesProtocol.Voice.TYPE
@@ -21,7 +25,12 @@ public object VoiceIds {
     /** 错误同步（上行）。实测 `f6{f1=errorCode}`；`4` = 摘下。 */
     public const val ID_ERROR: Int = GlassesProtocol.Voice.ID_ERROR
 
-    /** 长按触控板 / 唤醒（上行）。实测 `f11{f1{f1=uuid1 f2=uuid2} f3=2}`。 */
+    /**
+     * 长按触控板 / 唤醒词（**双向**，字段都是 `Voice.f11`）。
+     *
+     * 上行实测 `f11{f1{f1=requestId f2=transactionId} f2=kind=2}`；
+     * 下行由 {@link VoiceCodec.buildWakeUp} 构造（`f2=cmd=5`）。
+     */
     public const val ID_OPEN_DEVICE: Int = GlassesProtocol.Voice.ID_WAKE
 
     /**
@@ -108,18 +117,33 @@ public object VoiceCodec {
     private const val REQ_INFO_FIELD_TRANSACTION_ID = 2
     private const val REQ_INFO_FIELD_PAYLOAD = 3
 
-    // ---- id=10 下行（手机 → 眼镜）----
+    // ---- id=10 双向 ----
     /**
-     * `Voice.f1` = `WakeUpEvent` —— **只有下行是这个字段号**。
+     * `Voice.f11` = `WakeUpEvent`（tag `0x5A`）。
      *
-     * 上行（设备 → 手机）的 `id=10` 用 `f11`；混用会让设备**完全不响应**
-     * （`Voice` 类头注释、`参考协议`）。
+     * **两个方向都是 11**，不是"下行 1、上行 11" —— 早先那句按方向分字段号的说法是错的，
+     * 它把 `WearPacket.f1 = 14`（type 字段）误当成了 `Voice` 的字段号。
+     *
+     * 权威出处三条，互相独立：
+     * 1. `参考协议`：`protobuf 消息类` 的 `WAKEUP_EVENT_FIELD_NUMBER = 0x0B`；
+     *    命令 id `10 REPORT_WAKEUP_EVENT` → payload field **11**（差值 +1）。
+     * 2. `protobuf 消息类.setWakeupEvent`（`静态分析`）：`const/16 v0, 0xb`
+     *    → `iput 载荷类型 = 11`。
+     * 3. 本文件的 {@link parseOpenDevice} 一直按 11 解析上行，真机事件正常。
+     *
+     * ⚠ 字段 1 是 `INSTRUCTION_LIST`（`SYNC_INSTRUCTION_LIST`），**拿 1 发唤醒帧等于
+     * 发一个畸形的指令列表** —— 2026-11-14 第一次实验就是这么失败的（设备 ACK 后完全忽略）。
      */
-    private const val VOICE_FIELD_WAKE_UP = 1
+    private const val VOICE_FIELD_WAKE_UP = 11
     private const val WAKE_UP_FIELD_REQUEST_INFO = 1
     private const val WAKE_UP_FIELD_CMD = 2
 
-    /** 参考实现样本 `WakeUpEvent.f2 = 5`（实测）。 */
+    /**
+     * 下行 `cmd` 恒为 5。
+     *
+     * 参考实现里 `const/4 v0, 0x5` 直接写死，构造参数 `cmd` 根本没被使用
+     * （`new OpenDevice(5)` 的实参只是摆设）。
+     */
     private const val WAKE_UP_CMD_DEFAULT = 5L
 
     // ---- id=5 下行 ----
@@ -170,24 +194,34 @@ public object VoiceCodec {
     }
 
     /**
-     * 构造 `Voice id=10 WakeUpEvent` 的**内容**（手机 → 眼镜方向，不含 `WearPacket` 头）。
+     * 构造 `Voice id=10 WakeUpEvent` 的**内容**（不含 `WearPacket` 头）。
      *
-     * 出处：`参考协议`「伴随帧」——参考实现在发 `Voice id=4` 拍照请求**之前**先发它：
+     * 逐项对齐参考实现（`静态分析`）：
      *
      * ```text
-     * ch=1 tx seq=34  Voice id=10  WakeUpEvent { f1{transactionId, requestId}, f2=5 }
+     * 5a 48                      Voice.f11 (WakeUpEvent)
+     *   0a 44                    WakeUpEvent.f1 (RequestInfo)
+     *     0a 20 <32 ASCII>       VoiceRequestInfo.f1 = requestId
+     *     12 20 <32 ASCII>       VoiceRequestInfo.f2 = transactionId
+     *   10 05                    WakeUpEvent.f2 = cmd = 5（写死）
      * ```
      *
-     * ⚠ **这是未验证能力。** 参考实现发它的上下文是"拍照前建立 Voice 会话"，
-     * 不等于"拉起语音助手"。发出去之后眼镜会不会开始语音采集，**没人测过**。
+     * 参考实现里 `requestId` 与 `transactionId` 是**同一个** `randomRequestId(false)` 的结果
+     * （同一个 `String` 调两次 `getBytes`，先后写进 transactionId 和 requestId）。
+     * 所以本函数的 `requestId` 默认取 `transactionId` —— 第一次实验把它留空，
+     * 是与参考实现帧的第二处差异。
      *
-     * 判定方式（见 `docs/` 的拉起实验）：发完观察
-     * - 有 `WAKEUP_VOICE_FIRST`(6) / `FOLLOW_VOICE`(2) 的 MASS 帧 → 拉起了
-     * - 只有 `Voice id=6` 错误、或彻底无反应 → 拉不起
+     * 整帧 **74 字节**；`实测` 早先记录的 `Voice id=10 len=74` 就是这个长度，
+     * 而空 requestId 只能编出 42 字节 —— 长度本身就是旁证。
      *
-     * @param transactionId 会话事务 ID；的参考实现样本是 32 位十六进制
-     * @param requestId 可为 null（仍显式写 f1 空值，与 [buildMultiModel] 同规）
-     * @param cmd `WakeUpEvent.f2`，默认 5（参考实现样本值）
+     * 触发链（参考实现，`静态分析`）：`GlassesDeviceProxy.handleVoiceEvent` 收到
+     * `VoiceEventName.START_LISTENING` → 打印 "SDK requests start listening"
+     * → `IMiWearModuleApi.wakeupDevice()` → 本帧。
+     *
+     * @param transactionId 会话事务 id；参考实现是 `Long.toHexString(uuid.msb) + toHexString(uuid.lsb)`，
+     *   小写 hex、无横线、不补零（通常 32 字符）
+     * @param requestId 默认与 `transactionId` 相同（参考实现行为）
+     * @param cmd `WakeUpEvent.f2`，参考实现写死 5；留参数只为实验对比
      */
     public fun buildWakeUp(
         transactionId: String,
@@ -195,7 +229,7 @@ public object VoiceCodec {
         cmd: Long = WAKE_UP_CMD_DEFAULT,
     ): ByteArray {
         val reqInfo = java.io.ByteArrayOutputStream()
-        Pb.bytes(reqInfo, REQ_INFO_FIELD_REQUEST_ID, requestId ?: ByteArray(0))
+        Pb.bytes(reqInfo, REQ_INFO_FIELD_REQUEST_ID, requestId ?: transactionId.toByteArray())
         Pb.string(reqInfo, REQ_INFO_FIELD_TRANSACTION_ID, transactionId)
 
         val wakeUp = java.io.ByteArrayOutputStream()

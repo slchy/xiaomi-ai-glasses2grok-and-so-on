@@ -178,44 +178,62 @@ class VoiceCodecTest {
         }
     }
 
-    // ------------------------------------------ id=10 拉起语音（手机 → 眼镜，未验证）
-    // 出处：图片链路「伴随帧」。参考实现只在拍照前发过它，**不证明能拉起语音助手**。
-    // 这几条只锁「字节形状与方向」；能不能真的开麦只能靠实测。
+    // ------------------------------------------ id=10 拉起语音（手机 → 眼镜）
+    // 逐项对齐参考实现 OpenDevice.getVoice()（classes21）+ protobuf 消息类.setWakeupEvent
+    // （载荷类型 = 0xb）。教训：2026-11-14 首版按 Voice.f1 发，设备 ACK 后静默忽略 ——
+    // 字段 1 是 INSTRUCTION_LIST，发唤醒帧等于发畸形指令列表。
 
     private fun wk(txn: String = "t", req: ByteArray? = null, cmd: Long = 5L) =
         io.github.slchy.glasses2grok.core.pb.Pb.fields(VoiceCodec.buildWakeUp(txn, req, cmd))
 
     @Test
-    fun `W1 下行 id=10 只含 f1 WakeUpEvent`() {
-        assertEquals(setOf(1), wk().keys, "下行用 f1；上行才是 f11，混用设备完全不响应")
+    fun `W1 容器字段是 f11 不是 f1`() {
+        assertEquals(setOf(11), wk().keys, "Voice.f11 = WAKEUP_EVENT；f1 是 INSTRUCTION_LIST")
+        // tag 0x5A = (11 << 3) | 2
+        assertEquals(0x5A.toByte(), VoiceCodec.buildWakeUp("t")[0])
     }
 
     @Test
     fun `W2 WakeUpEvent 含 f1 requestInfo 与 f2 cmd`() {
-        val w = io.github.slchy.glasses2grok.core.pb.Pb.fields(wk()[1]!!)
+        val w = io.github.slchy.glasses2grok.core.pb.Pb.fields(wk()[11]!!)
         assertTrue(w.containsKey(1) && w.containsKey(2), "实际 ${w.keys}")
-        assertEquals(5L, io.github.slchy.glasses2grok.core.pb.Pb.varintValue(w[2]!!), "默认 cmd=5")
+        assertEquals(5L, io.github.slchy.glasses2grok.core.pb.Pb.varintValue(w[2]!!), "参考实现 cmd 写死 5")
     }
 
     @Test
-    fun `W3 requestInfo f1 是 requestId f2 是 transactionId`() {
-        val w = io.github.slchy.glasses2grok.core.pb.Pb.fields(wk("txn-9", "req-1".toByteArray())[1]!!)
+    fun `W3 requestInfo f1 是 requestId f2 是 transactionId 且默认同值`() {
+        val w = io.github.slchy.glasses2grok.core.pb.Pb.fields(wk("txn-9")[11]!!)
         val ri = io.github.slchy.glasses2grok.core.pb.Pb.fields(w[1]!!)
-        assertEquals("req-1", String(ri[1]!!, Charsets.UTF_8), "f1 是 requestId")
+        assertEquals("txn-9", String(ri[1]!!, Charsets.UTF_8), "f1 是 requestId")
         assertEquals("txn-9", String(ri[2]!!, Charsets.UTF_8), "f2 是 transactionId")
+        // 参考实现 OpenDevice.getVoice() 用同一个 randomRequestId 写这两处
+        assertTrue(ri[1]!!.contentEquals(ri[2]!!), "默认 requestId 应与 transactionId 同值")
     }
 
     @Test
-    fun `W4 空 requestId 仍写出 f1`() {
-        val w = io.github.slchy.glasses2grok.core.pb.Pb.fields(wk()[1]!!)
+    fun `W4 显式传 requestId 时不被覆盖`() {
+        val w = io.github.slchy.glasses2grok.core.pb.Pb.fields(wk("txn-9", "req-1".toByteArray())[11]!!)
         val ri = io.github.slchy.glasses2grok.core.pb.Pb.fields(w[1]!!)
-        assertTrue(ri.containsKey(1), "空 requestId 也必须显式写 f1，实际 ${ri.keys}")
-        assertEquals(0, ri[1]!!.size)
+        assertEquals("req-1", String(ri[1]!!, Charsets.UTF_8))
+        assertEquals("txn-9", String(ri[2]!!, Charsets.UTF_8))
     }
 
     @Test
     fun `W5 字节形状固定`() {
-        assertEquals("0a 09 0a 05 0a 00 12 01 74 10 05", VoiceCodec.buildWakeUp("t").toHexSpaced())
+        assertEquals("5a 0a 0a 06 0a 01 74 12 01 74 10 05", VoiceCodec.buildWakeUp("t").toHexSpaced())
+    }
+
+    @Test
+    fun `W6 32 字符 transactionId 编出 74 字节与参考实现帧同长`() {
+        val txn = "732df1373422fd45b77486bb2328db5a"
+        val voice = VoiceCodec.buildWakeUp(txn)
+        // 实测记过 Voice id=10 len=74；空 requestId 只能编出 42
+        assertEquals(74, voice.size, "实际 ${voice.size} 字节")
+        assertEquals(
+            "5a 48 0a 44 0a 20 37 33 32 64 66 31 33 37 33 34 32 32 66 64 34 35 62 37 37 34 38 36 62 62 32 33 32 38 64 62 35 61" +
+                " 12 20 37 33 32 64 66 31 33 37 33 34 32 32 66 64 34 35 62 37 37 34 38 36 62 62 32 33 32 38 64 62 35 61 10 05",
+            voice.toHexSpaced(),
+        )
     }
 
     @Test

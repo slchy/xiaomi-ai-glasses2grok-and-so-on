@@ -294,13 +294,13 @@ public class GlassesSession internal constructor(
     public fun requestWearStatus(): SendResult = sendWearInternal(2, 93, ByteArray(0))
 
     /**
-     * **尝试**让眼镜主动进入语音态：`Voice`(14) id=10 `WakeUpEvent`（手机 → 眼镜）。
+     * **请求**眼镜进入语音态：`Voice`(14) id=10 `WakeUpEvent`。
      *
-     * ⚠ **未验证**：参考实现只在拍照前发过这一帧，不证明它能拉起语音助手。
-     * 判定方式见 `SessionEngine.requestWakeUp` 的注释与 `docs/` 的拉起实验。
+     * 对齐参考实现：容器是 `Voice.f11`（**不是 f1**，f1 是
+     * `INSTRUCTION_LIST`）、`cmd=5` 写死、`requestId` 默认等于 `transactionId`。
      *
-     * @param transactionId 会话事务 ID，建议 32 位十六进制
-     * @param requestId 可为 null
+     * @param transactionId 会话事务 id，建议 32 字符小写 hex
+     * @param requestId 默认与 `transactionId` 相同（参考实现行为）
      */
     public fun requestWakeUp(transactionId: String, requestId: ByteArray? = null): SendResult =
         sendWearInternal(

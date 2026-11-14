@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-14T09:46:07Z
+exported-at    2026-11-14T09:47:34Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符
@@ -187,7 +187,7 @@ files
   sdk/sample/src/main/AndroidManifest.xml                                dcf6d0b2b2e98279
   sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/DashboardActivity.kt 0870443c3c7b4d6d
   sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/HighResPhoto.kt 9d26fcfd04c91946
-  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/MainActivity.kt d5e8eb409d8d13cc
+  sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/MainActivity.kt 5137764e6c24541a
   sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/PcmPlayer.kt a7f35b204500989d
   sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/PhotoFsm.kt 5a629499ddbb44f0
   sdk/sample/src/main/java/io/github/slchy/glasses2grok/sample/PhotoJob.kt e9cb17b4137a396b

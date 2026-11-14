@@ -441,6 +441,19 @@ class MainActivity : Activity() {
             },
         )
 
+        title("拉起语音（未验证实验）")
+        row(
+            // 手机 → 眼镜方向发 `Voice` id=10 WakeUpEvent（下行用 f1，上行用 f11，写反设备无响应）。
+            // 判定：出现 MASS 语音帧（type 6 WAKEUP_VOICE_FIRST / 2 FOLLOW_VOICE）或
+            // `VoiceEvent.Status` 即算拉起；只有 `VoiceEvent.Error`(id=6) 或毫无反应即失败。
+            "Voice id=10 拉起" to {
+                bg("wake-up") { s ->
+                    val txn = java.util.UUID.randomUUID().toString().replace("-", "")
+                    log("requestWakeUp(txn=$txn) → ${s.requestWakeUp(txn)}")
+                }
+            },
+        )
+
         title("手势 / 设置写入")
         row(
             "单击=媒体" to { bg("music-1") { s -> log("setMusicControl(SINGLE)=${s.setMusicControl(MusicControlTap.SINGLE)}") } },

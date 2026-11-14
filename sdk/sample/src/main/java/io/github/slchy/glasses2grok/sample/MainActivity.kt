@@ -803,13 +803,16 @@ class MainActivity : Activity() {
             }
 
             runOnUiThread { log("dur ==== 开始录音 ====") }
-            runOnUiThread { log("dur start = ${s.startRecording()}") }
+            // 阻塞调用留在探测线程：runOnUiThread 里等 3 s 回包就是一次 ANR
+            val started = s.startRecording()
+            runOnUiThread { log("dur start = $started") }
             repeat(3) { i ->
                 Thread.sleep(2_000)
                 sample("录音中+${(i + 1) * 2}s")
             }
 
-            runOnUiThread { log("dur stop = ${s.stopRecording()}") }
+            val stopped = s.stopRecording()
+            runOnUiThread { log("dur stop = $stopped") }
             repeat(10) { i ->
                 Thread.sleep(2_000)
                 sample("停止后+${(i + 1) * 2}s")

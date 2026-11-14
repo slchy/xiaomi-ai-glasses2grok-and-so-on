@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -94,6 +95,7 @@ class SessionDriverTest {
         hangConnect: Boolean = false,
         dropRightAfterConnect: Boolean = false,
         readDelayMs: Long = 0,
+        onBlockingCall: ((Long) -> Unit)? = null,
     ) {
         val events = Collections.synchronizedList(mutableListOf<GlassesEvent>())
         val links = Collections.synchronizedList(mutableListOf<FakeLink>())
@@ -121,6 +123,7 @@ class SessionDriverTest {
             suspendPollMs = 20,
             maxConnectAttempts = maxAttempts,
             backoff = Backoff(initialMs = 10, maxMs = 10, jitterRatio = 0.0),
+            onBlockingCall = onBlockingCall,
         )
 
         fun awaitState(target: SessionState, timeoutMs: Long = 3_000) {
@@ -286,6 +289,20 @@ class SessionDriverTest {
 
         rig.driver.closeAndWait()
         assertEquals(SessionState.CLOSED, rig.driver.state)
+    }
+
+    @Test
+    fun `阻塞入口把时长交给护栏 - 门面才能挡住主线程`() {
+        // 门面的主线程判定挂在 `onBlockingCall` 上：传输层不认识 Looper，
+        // 但每个阻塞入口都必须先过这道回调，否则「主线程上直接拒绝」就有了漏网路径。
+        val seen = Collections.synchronizedList(mutableListOf<Long>())
+        val rig = Rig(onBlockingCall = { seen += it })
+
+        // 未 READY ⇒ request 立刻返回 null，护栏应在任何状态判断之前就被调用
+        assertNull(rig.driver.request(2, 2, ByteArray(0), timeoutMs = 4_321))
+        rig.driver.closeAndWait()
+
+        assertEquals(listOf(4_321L, 5_000L), seen, "request/closeAndWait 都要过护栏，且带上真实等待上限")
     }
 
     @Test

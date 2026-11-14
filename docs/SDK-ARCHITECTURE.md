@@ -177,6 +177,49 @@ io.github.slchy.glasses2grok.sdk
 5. **RX 丢弃对宿主可见**：`rxDroppedChunks` / `rxDroppedBytes` / `rxStaleChunks` 直接透出泵的计数；
    语音块上另有 `droppedBefore`（见 §5.1），用来区分「设备没说话」和「本端把块丢了」。
 
+### 3.1 宿主侧的线程契约：阻塞族 vs 非阻塞族
+
+`GlassesSession` 的两族方法**语义不同、线程要求也不同**，混着用就是 ANR。
+
+| 方法族 | 返回类型 | 行为 | 最长阻塞 | 主线程能调吗 |
+|---|---|---|---|---|
+| `deviceInfo()` `deviceStatus()` `wearStatus()` `mediaSummary()` `listMedia()` `recordStatus()` `wifiConfig()` `systemSetting()` `requestRecord()` `startRecording()` `stopRecording()` `requestReportDataAndWait()` `enableWifiApAndWait()` `enableWifiP2pGcAndWait()` | `QueryResult<T>` | 发命令 **+ 等回包** | 3 s（`listMedia`/`enableWifiApAndWait` 5 s，`enableWifiP2pGcAndWait` 8 s） | ❌ 抛 `IllegalStateException` |
+| `setMusicControl()` `setShootingMode()` `setRecordControl()` `setVoiceWakeup()` `writeSystemSetting()` `setSystemSettingField()` | `SettingWriteResult` | 读 → 改 → 写 → **再读校验** | 3 s × 2 | ❌ 同上 |
+| `sendWear()` `requestWearStatus()` `capturePhoto()` `capturePhotoWithIds()` `syncTime()` `syncVoiceStatus()` `endVoiceSession()` `startLive()` `stopLive()` `requestMediaFile()` `enableWifiAp()` `setWifiConfig()` `enableWifiP2pGc()` … | `SendResult` | 只入队（`Queued` = SAR 已受理） | 一次同步写，毫秒级 | ✅ |
+| `open()` `close()` `state` `setListener()` `canCapturePhoto` | — | 不等待 | — | ✅ |
+| `closeAndWait()` | — | 等收尾做完 | ≈ 5 s | ❌ |
+| `linkCounters()` | `LinkCounters` | 占一次引擎任务队列 | 200 ms | ⚠️ 能用但别在主线程高频调 |
+
+**为什么不能把查询做成非阻塞**：`deviceInfo()` 的返回值**就是**回包内容，改成立即返回 `Queued`
+等于把语义删掉。要「发了就走」请用返回 `SendResult` 的那组（`requestWearStatus()` 之类），
+结果以 `GlassesEvent` 到达。
+
+**护栏默认开着**：`SessionOptions.threadGuards = true` 时，阻塞族在 Android 主线程上被调用会
+**立即抛 `IllegalStateException`**（消息里带这次的实际等待上限与改法），而不是陪你等出一个 ANR。
+Android 输入分发 ANR 阈值是 5 s，`enableWifiP2pGcAndWait()` 默认就要等 8 s —— 一次点击就是必死。
+
+```kotlin
+// ✅ 阻塞族放后台：协程
+lifecycleScope.launch {
+    val info = withContext(Dispatchers.IO) { session.deviceInfo() }
+    when (info) {
+        is QueryResult.Ok -> render(info.value)
+        is QueryResult.Failed -> toast(info.reason)
+    }
+}
+
+// ✅ 或者干脆用非阻塞族 + 事件
+session.requestWearStatus()          // 主线程可调，立即返回 Queued
+// 结果在回调里：is GlassesEvent.WearChanged -> render(event.status)
+
+// ❌ 主线程直接查 → IllegalStateException（threadGuards=false 时则是 3～8 s 卡死 → ANR）
+session.deviceInfo()
+```
+
+> 回调里也别做阻塞查询：`callbackDispatcher` **默认就是主线程**，在 `onEvent` 里调 `deviceInfo()`
+> 同样会被护栏拦下（换成 `CallingThread` 时则会被「别在引擎线程上阻塞查询」拦下）。
+> 回调里只做「入队 / 派发给 UI」，重活丢到自己的线程池。
+
 ---
 
 ## 4. 状态机与握手
@@ -303,10 +346,10 @@ public object ErrorCode {
 // 建连（非阻塞，立即返回 CONNECTING 会话）
 GlassesSession.open(context, device, token16: ByteArray, options: SessionOptions = SessionOptions())
 
-// 查询（阻塞，带超时；结果在 QueryResult.Ok / QueryResult.Failed 里）
+// 查询（**阻塞**，勿在主线程调用；默认等 3 s，最长 8 s —— 结果在 QueryResult.Ok / Failed 里）
 deviceInfo(3_000)  deviceStatus(3_000)  wearStatus(3_000)  mediaSummary(3_000)
 listMedia(5_000)   recordStatus(3_000)  wifiConfig(3_000)  systemSetting(...)
-requestReportDataAndWait(5_000)  enableWifiApAndWait(5_000)  enableWifiP2pGcAndWait(...)
+requestReportDataAndWait(5_000)  enableWifiApAndWait(5_000)  enableWifiP2pGcAndWait(8_000)
 
 // 发送（非阻塞，返回 SendResult）
 requestWearStatus()  syncTime(...)  endVoiceSession()  syncVoiceStatus(...)
@@ -332,7 +375,11 @@ close()  closeAndWait()
 ```
 
 `SessionOptions`：`callbackDispatcher`（默认主线程）· `connectTimeoutMs`（15 s）·
-`maxConnectAttempts`（5）· `tickMs`（50）· `diagnostics`（额外发 `Diagnostic` 事件）。
+`maxConnectAttempts`（5）· `tickMs`（50）· `diagnostics`（额外发 `Diagnostic` 事件）·
+`threadGuards`（默认 `true`：阻塞族方法在主线程上调用时直接抛，见 §3.1）。
+
+> ⚠️ **`QueryResult` / `SettingWriteResult` 族 = 阻塞**，宿主必须在后台线程调；`SendResult` 族
+> 只入队、主线程可调。完整对照表与正反例见 [§3.1](#31-宿主侧的线程契约阻塞族-vs-非阻塞族)。
 
 ### 7.2 `:ktx`
 

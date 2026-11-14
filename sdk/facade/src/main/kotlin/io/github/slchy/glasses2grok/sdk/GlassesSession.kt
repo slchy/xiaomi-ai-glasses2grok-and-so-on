@@ -62,10 +62,17 @@ import java.util.concurrent.atomic.AtomicReference
  * session.close()
  * ```
  *
- * 三条硬约束：
+ * 四条硬约束：
  * - [open] **非阻塞**（建连与握手在后台线程 ⇒ 无 ANR 风险）。
+ * - **阻塞与非阻塞两族方法并存，别混着用**：返回 [QueryResult] / [SettingWriteResult] 的
+ *   （`deviceInfo()` / `wearStatus()` / `systemSetting()` / `setVoiceWakeup()` …）要等设备回包，
+ *   默认等 3 s、[listMedia] 与 [enableWifiApAndWait] 5 s、[enableWifiP2pGcAndWait] 8 s，
+ *   **必须在后台线程调用** —— 主线程上占满 5 s 就是 ANR，所以 [`SessionOptions.threadGuards`]
+ *   默认让它们在主线程直接抛 `IllegalStateException`。返回 [SendResult] 的那组（`capturePhoto()` /
+ *   `requestWearStatus()` / `startLive()` …）只入队、立即返回，主线程可调。
+ *   拿不准用哪个就用后者 + `GlassesEvent`，或 `-ktx` 的 `Flow`。
  * - 回调**不得重入等待**：在回调里调 [sendWear] 只入队、立即返回。
- * - [close] **幂等**，返回后不再有任何回调。
+ * - [close] **幂等且立即返回**（要「返回即静默」用 [closeAndWait]，那是阻塞的）。
  */
 public class GlassesSession internal constructor(
     private val driver: SessionDriver,
@@ -157,6 +164,11 @@ public class GlassesSession internal constructor(
                 connectTimeoutMs = options.connectTimeoutMs,
                 maxConnectAttempts = options.maxConnectAttempts,
                 diagnostics = options.diagnostics,
+                onBlockingCall = if (options.threadGuards) {
+                    { timeoutMs -> Threading.checkNotBlockingMainThread(timeoutMs) }
+                } else {
+                    null
+                },
                 emit = { event ->
                     val isFinal = event is GlassesEvent.StateChanged &&
                         event.state == SessionState.CLOSED
@@ -264,15 +276,12 @@ public class GlassesSession internal constructor(
     }
 
     /**
-     * 读佩戴状态：`System`(2) `GetWearStatus`(93)。之后的变化靠 `System`(2) `id=79` 被动上报。
-     */
-    /**
      * 读佩戴状态（**阻塞**）：`System`(2) `GetWearStatus`(93)，空载荷，回包 `System.f60 = enum`。
      *
      * `1 = 佩戴中 / 2 = 未佩戴`（真机闭环，见 [WearStatus]）。这是**权威当前态**；
      * 变化通知走 `System id=79`（[GlassesEvent.WearChanged]）。
      *
-     * ⚠️ 不要在主线程调（会等回包）。
+     * ⚠️ **阻塞**，勿在主线程调用；只关心变化就等 [GlassesEvent.WearChanged]。
      */
     public fun wearStatus(timeoutMs: Long = 3_000): QueryResult<WearStatus> =
         query(QueryIds.SYSTEM, QueryIds.ID_WEAR_STATUS, ByteArray(0), timeoutMs, WearStatus::fromQuery)
@@ -385,11 +394,19 @@ public class GlassesSession internal constructor(
     public fun deviceInfo(timeoutMs: Long = 3_000): QueryResult<DeviceInfo> =
         query(QueryIds.SYSTEM, QueryIds.ID_DEVICE_INFO, ByteArray(0), timeoutMs, DeviceInfo::parse)
 
-    /** `System id=1` 设备状态。⚠️ 两个 int 的语义未确认，见 `DeviceStatus`。 */
+    /**
+     * `System id=1` 设备状态。⚠️ 两个 int 的语义未确认，见 `DeviceStatus`。
+     *
+     * ⚠️ **阻塞**，勿在主线程调用。
+     */
     public fun deviceStatus(timeoutMs: Long = 3_000): QueryResult<DeviceStatus> =
         query(QueryIds.SYSTEM, QueryIds.ID_DEVICE_STATUS, ByteArray(0), timeoutMs, DeviceStatus::parse)
 
-    /** `Media id=14` 媒体数量摘要。 */
+    /**
+     * `Media id=14` 媒体数量摘要。
+     *
+     * ⚠️ **阻塞**，勿在主线程调用。
+     */
     public fun mediaSummary(timeoutMs: Long = 3_000): QueryResult<MediaSummary> =
         query(QueryIds.MEDIA, QueryIds.ID_MEDIA_SUMMARY, ByteArray(0), timeoutMs, MediaSummary::parse)
 
@@ -397,6 +414,7 @@ public class GlassesSession internal constructor(
      * `Media id=15` 媒体文件列表。
      *
      * ⚠️ 回包 id 是 **16**，不是 15 —— 这是真机实测的，不是笔误。
+     * ⚠️ **阻塞**，勿在主线程调用。
      */
     public fun listMedia(timeoutMs: Long = 5_000): QueryResult<MediaList> =
         query(
@@ -408,7 +426,11 @@ public class GlassesSession internal constructor(
             responseId = QueryIds.ID_MEDIA_LIST_RESPONSE,
         )
 
-    /** `Media id=21` 录音状态。字段名已按参考实现对齐。 */
+    /**
+     * `Media id=21` 录音状态。字段名已按参考实现对齐。
+     *
+     * ⚠️ **阻塞**，勿在主线程调用。
+     */
     public fun recordStatus(timeoutMs: Long = 3_000): QueryResult<RecordStatus> =
         query(QueryIds.MEDIA, QueryIds.ID_RECORD_STATUS, ByteArray(0), timeoutMs, RecordStatus::parse)
 
@@ -467,7 +489,7 @@ public class GlassesSession internal constructor(
         }
     }
 
-    /** 发 `System id=80` 并等回包（默认 5 s）。阻塞调用，不要在主线程用。 */
+    /** 发 `System id=80` 并等回包（默认 5 s）。**阻塞**，勿在主线程调用。 */
     public fun requestReportDataAndWait(timeoutMs: Long = 5_000): QueryResult<ReportDataResult> {
         if (closed.get()) return QueryResult.Failed("会话已关闭")
         if (driver.state != SessionState.READY) return QueryResult.Failed("未就绪（当前 ${driver.state}）")
@@ -488,6 +510,8 @@ public class GlassesSession internal constructor(
      *
      * ⚠️ **`code != 0` 一律返回 `Failed`** —— 设备会用 `RecordResponse.code` 拒绝请求
      * （`RecordCode`：4 = 没在录音、10 = 已在录音、11 电量低…），把它包成 `Ok` 就是撒谎。
+     *
+     * ⚠️ **阻塞**，勿在主线程调用。
      */
     public fun requestRecord(
         kind: RecordKind,
@@ -495,7 +519,10 @@ public class GlassesSession internal constructor(
         timeoutMs: Long = 3_000,
     ): QueryResult<RecordResponse> = requestRecord(kind.wire, command.wire, timeoutMs)
 
-    /** @deprecated 用 [requestRecord] 的枚举重载。 */
+    /**
+     * ⚠️ **阻塞**，勿在主线程调用。
+     * @deprecated 用 [requestRecord] 的枚举重载。
+     */
     @Deprecated(
         "改用 requestRecord(RecordKind, RecordCommand, …)",
         ReplaceWith(
@@ -523,26 +550,40 @@ public class GlassesSession internal constructor(
         }
     }
 
-    /** 开始录音（默认 `RECORD_NORMAL`）。 */
+    /**
+     * 开始录音（默认 `RECORD_NORMAL`）。
+     *
+     * ⚠️ **阻塞**，勿在主线程调用。
+     */
     public fun startRecording(
         kind: RecordKind = RecordKind.NORMAL,
         timeoutMs: Long = 3_000,
     ): QueryResult<RecordResponse> = requestRecord(kind, RecordCommand.START, timeoutMs)
 
-    /** @deprecated 用 [startRecording] 的枚举重载。 */
+    /**
+     * ⚠️ **阻塞**，勿在主线程调用。
+     * @deprecated 用 [startRecording] 的枚举重载。
+     */
     @Deprecated("改用 startRecording(RecordKind, …)", ReplaceWith("startRecording(RecordKind.entries.first { it.wire == type }, timeoutMs)"))
     public fun startRecordingInt(
         type: Int = RecordType.NORMAL,
         timeoutMs: Long = 3_000,
     ): QueryResult<RecordResponse> = requestRecord(type, RecordAction.START, timeoutMs)
 
-    /** 停止录音（默认 `RECORD_NORMAL`）。 */
+    /**
+     * 停止录音（默认 `RECORD_NORMAL`）。
+     *
+     * ⚠️ **阻塞**，勿在主线程调用。
+     */
     public fun stopRecording(
         kind: RecordKind = RecordKind.NORMAL,
         timeoutMs: Long = 3_000,
     ): QueryResult<RecordResponse> = requestRecord(kind, RecordCommand.STOP, timeoutMs)
 
-    /** @deprecated 用 [stopRecording] 的枚举重载。 */
+    /**
+     * ⚠️ **阻塞**，勿在主线程调用。
+     * @deprecated 用 [stopRecording] 的枚举重载。
+     */
     @Deprecated("改用 stopRecording(RecordKind, …)", ReplaceWith("stopRecording(RecordKind.entries.first { it.wire == type }, timeoutMs)"))
     public fun stopRecordingInt(
         type: Int = RecordType.NORMAL,
@@ -553,6 +594,7 @@ public class GlassesSession internal constructor(
      * `System id=86` 读 WiFi 配置 —— 回包是**明文 SSID/PSK**。
      *
      * ⚠️ 宿主拿到后不要落盘/打日志；SDK 只负责取回。
+     * ⚠️ **阻塞**，勿在主线程调用。
      */
     public fun wifiConfig(timeoutMs: Long = 3_000): QueryResult<WifiConfig> =
         query(QueryIds.SYSTEM, QueryIds.ID_WIFI_CONFIG, ByteArray(0), timeoutMs, WifiConfig::parse)
@@ -578,7 +620,7 @@ public class GlassesSession internal constructor(
      *
      * 回包里就是连 AP 需要的全部凭据（实测）。拿到后立刻 [AlbumClient.connect] —— 眼镜热点空闲约 30 s 就关。
      *
-     * 阻塞调用，**不要在主线程**用（默认等 5 s）。
+     * **阻塞**，勿在主线程调用（默认等 5 s）。
      */
     public fun enableWifiApAndWait(timeoutMs: Long = 5_000): QueryResult<WifiApInfo> {
         if (closed.get()) return QueryResult.Failed("会话已关闭")
@@ -616,7 +658,8 @@ public class GlassesSession internal constructor(
     }
 
     /**
-     * 让眼镜作为 P2P client 加入手机自建的 Wi-Fi Direct 组（`System id=99 EnableWiFiP2PGC`）。     *
+     * 让眼镜作为 P2P client 加入手机自建的 Wi-Fi Direct 组（`System id=99 EnableWiFiP2PGC`）。
+     *
      * 参考实现「无感」路径：手机 `WifiP2pManager.createGroup()` 当 GO（静默、无系统确认框），
      * 把组的 SSID/密码/频率发过来；眼镜加入后回 `f66 WiFiP2P.Result{code, ipAddress}`。
      * 手机侧的建组工具见 `P2pGroupOwner`。
@@ -633,7 +676,7 @@ public class GlassesSession internal constructor(
     /**
      * 发 `System id=99` 并**等回包**（眼镜的 P2P IP，通常是 `192.168.49.x`）。
      *
-     * 阻塞调用，**不要在主线程**用（默认等 8 s —— 眼镜加入 P2P 组比开热点慢）。
+     * **阻塞**，勿在主线程调用（默认等 8 s —— 眼镜加入 P2P 组比开热点慢）。
      */
     public fun enableWifiP2pGcAndWait(
         ssid: String,
@@ -674,6 +717,8 @@ public class GlassesSession internal constructor(
      *
      * ⚠️ **不要传 0**：空 payload 等价于 bitmask 0，设备只回 `f35{f9{f1=0}}` 7 字节。
      * `f9`（静默升级）无条件返回，不需要置位。
+     *
+     * ⚠️ **阻塞**，勿在主线程调用。
      */
     public fun systemSetting(
         bits: Int = SystemSettingRequest.ALL_SUPPORTED,
@@ -750,13 +795,18 @@ public class GlassesSession internal constructor(
     /**
      * 媒体控制手势：`headset.musicControl`（`f8.f4`）。
      *
+     * ⚠️ **阻塞**，勿在主线程调用（读 → 改 → 写 → 再读）。
+     *
      * @param tap [MusicControlTap.SINGLE] 单指单击播放/暂停，[MusicControlTap.DOUBLE] 单指双击
      *   （1↔2 已真机双向验证）
      */
     public fun setMusicControl(tap: MusicControlTap, timeoutMs: Long = 3_000): SettingWriteResult =
         setSystemSettingField(8, 4, tap.wire.toLong(), timeoutMs)
 
-    /** @deprecated 用 [setMusicControl] 的枚举重载；裸数字传错只会在设备侧静默不采纳。 */
+    /**
+     * ⚠️ **阻塞**，勿在主线程调用。
+     * @deprecated 用 [setMusicControl] 的枚举重载；裸数字传错只会在设备侧静默不采纳。
+     */
     @Deprecated("改用 setMusicControl(MusicControlTap, …)", ReplaceWith("setMusicControl(MusicControlTap.entries.first { it.wire == tap }, timeoutMs)"))
     public fun setMusicControl(tap: Int, timeoutMs: Long = 3_000): SettingWriteResult =
         setSystemSettingField(8, 4, tap.toLong(), timeoutMs)
@@ -764,13 +814,18 @@ public class GlassesSession internal constructor(
     /**
      * 拍摄模式：`mediaSetting.shootingMode`（`f7.f1`）。
      *
+     * ⚠️ **阻塞**，勿在主线程调用（读 → 改 → 写 → 再读）。
+     *
      * @param mode [ShootingMode.SHORT_PRESS_PHOTO] 短按拍照/长按录像，
      *   [ShootingMode.SHORT_PRESS_RECORD] 短按录像/长按拍照（值表为静态来源，未实测功能效果）
      */
     public fun setShootingMode(mode: ShootingMode, timeoutMs: Long = 3_000): SettingWriteResult =
         setSystemSettingField(7, 1, mode.wire.toLong(), timeoutMs)
 
-    /** @deprecated 用 [setShootingMode] 的枚举重载。 */
+    /**
+     * ⚠️ **阻塞**，勿在主线程调用。
+     * @deprecated 用 [setShootingMode] 的枚举重载。
+     */
     @Deprecated("改用 setShootingMode(ShootingMode, …)", ReplaceWith("setShootingMode(ShootingMode.entries.first { it.wire == mode }, timeoutMs)"))
     public fun setShootingMode(mode: Int, timeoutMs: Long = 3_000): SettingWriteResult =
         setSystemSettingField(7, 1, mode.toLong(), timeoutMs)
@@ -778,19 +833,26 @@ public class GlassesSession internal constructor(
     /**
      * 录音手势：`mediaSetting.recordControl`（`f7.f8`）。
      *
+     * ⚠️ **阻塞**，勿在主线程调用（读 → 改 → 写 → 再读）。
+     *
      * @param gesture [RecordGesture.DOUBLE_TAP] 双指单击、[RecordGesture.DOUBLE_HOLD] 双指长按、
      *   [RecordGesture.OFF] 无（值表为静态来源，未实测功能效果）
      */
     public fun setRecordControl(gesture: RecordGesture, timeoutMs: Long = 3_000): SettingWriteResult =
         setSystemSettingField(7, 8, gesture.wire.toLong(), timeoutMs)
 
-    /** @deprecated 用 [setRecordControl] 的枚举重载。 */
+    /**
+     * ⚠️ **阻塞**，勿在主线程调用。
+     * @deprecated 用 [setRecordControl] 的枚举重载。
+     */
     @Deprecated("改用 setRecordControl(RecordGesture, …)", ReplaceWith("setRecordControl(RecordGesture.entries.first { it.wire == mode }, timeoutMs)"))
     public fun setRecordControl(mode: Int, timeoutMs: Long = 3_000): SettingWriteResult =
         setSystemSettingField(7, 8, mode.toLong(), timeoutMs)
 
     /**
      * 语音唤醒开关：`aiAssistant.voiceWakeup`（`f6.f1`）。
+     *
+     * ⚠️ **阻塞**，勿在主线程调用（读 → 改 → 写 → 再读）。
      *
      * @param enabled 写入 `1` / `0`。⚠️ **只验证了「设备采纳并读回」**，没有验证关掉后真的
      *   不再响应唤醒词 —— 后者要人工对设备说话。
@@ -881,8 +943,8 @@ public class GlassesSession internal constructor(
     /**
      * **同步**关闭：等收尾做完（最坏约 4.3 s）。
      *
-     * 只在「关闭后必须立刻安全复用资源」时用（测试、进程退出、同进程重开）——
-     * UI 线程请用 [close]。
+     * 只在「关闭后必须立刻安全复用资源」时用（测试、进程退出、同进程重开）。
+     * **阻塞**，勿在主线程调用 —— UI 线程请用 [close]。
      */
     public fun closeAndWait() {
         // 不能用 compareAndSet 早退：先调过 close() 的宿主再调 closeAndWait() 时

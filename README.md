@@ -58,14 +58,15 @@ repositories {
     google()
 }
 dependencies {
-    implementation("io.github.slchy.glasses2grok:sdk:0.2.2")
-    implementation("io.github.slchy.glasses2grok:sdk-ktx:0.2.2") // 可选，提供 Kotlin 协程 / Flow 支持
+    implementation("io.github.slchy.glasses2grok:sdk:0.2.3")
+    implementation("io.github.slchy.glasses2grok:sdk-ktx:0.2.3") // 可选，提供 Kotlin 协程 / Flow 支持
 }
 ```
 
 ### 快速上手 (Kotlin)
 
 ```kotlin
+import io.github.slchy.glasses2grok.core.query.QueryResult
 import io.github.slchy.glasses2grok.core.session.GlassesEvent
 import io.github.slchy.glasses2grok.sdk.GlassesSession
 
@@ -95,17 +96,27 @@ session.addListener { event ->
     }
 }
 
-// 4. 调用高层业务能力
-session.capturePhoto() // 触发拍照
-session.syncTime()     // 同步设备时间
+// 4. 非阻塞族：只入队、立即返回 Queued，主线程可调（结果以事件到达）
+session.capturePhoto()        // 触发拍照，图片走 GlassesEvent.Image
+session.syncTime()            // 同步设备时间
+session.requestWearStatus()   // 请设备报一次佩戴状态 → GlassesEvent.WearChanged
 
-// 5. 使用 Kotlin Flow 消费（需引入 sdk-ktx）
+// 5. 阻塞族：要等设备回包（默认 3 s，最长 8 s），**必须放后台线程**
+//    主线程调用会直接抛 IllegalStateException（SessionOptions.threadGuards 默认开）
+lifecycleScope.launch(Dispatchers.IO) {
+    when (val r = session.deviceInfo()) {
+        is QueryResult.Ok     -> println("设备信息: ${r.value}")
+        is QueryResult.Failed -> println("查询失败: ${r.reason}")
+    }
+}
+
+// 6. 使用 Kotlin Flow 消费（需引入 sdk-ktx）
 // lifecycleScope.launch {
 //     session.events().collect { event -> ... }
 //     session.audio().collect { chunk -> ... }
 // }
 
-// 6. 优雅关闭会话
+// 7. 优雅关闭会话
 session.close()
 ```
 

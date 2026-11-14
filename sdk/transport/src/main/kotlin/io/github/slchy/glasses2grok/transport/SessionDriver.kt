@@ -57,6 +57,13 @@ class SessionDriver(
      */
     private val syncWaitMs: Long = 1_000,
     diagnostics: Boolean = false,
+    /**
+     * 阻塞调用的线程护栏，由门面注入（`Looper` 判定属 `:facade`，传输层不认识 `Looper`）。
+     *
+     * 门面把「主线程上直接拒绝」挂在这里，于是所有阻塞入口
+     * （[request] / [closeAndWait]）自动收口，将来新增的阻塞路径也不会漏。传 null 表示不检查。
+     */
+    private val onBlockingCall: ((timeoutMs: Long) -> Unit)? = null,
     private val threadPrefix: String = "glasses",
 ) {
     /**
@@ -64,6 +71,9 @@ class SessionDriver(
      * 卡到这么久说明链路已经堵住，直接放弃、继续关连接。
      */
     private val goodbyeWaitMs: Long = 300
+
+    /** [closeAndWait] 等收尾线程的上限（与收尾里三处 join 的预算之和同量级）。 */
+    private val closeJoinMs: Long = 5_000
 
     private val lastState = AtomicReference(SessionState.IDLE)
 
@@ -256,8 +266,9 @@ class SessionDriver(
      * UI 线程不要调。
      */
     fun closeAndWait() {
+        onBlockingCall?.invoke(closeJoinMs)
         close()
-        closeThreadRef.get()?.join(5_000)
+        closeThreadRef.get()?.join(closeJoinMs)
     }
 
     private fun teardown() {
@@ -319,6 +330,7 @@ class SessionDriver(
         timeoutMs: Long = 3_000,
         responseId: Int = id,
     ): ByteArray? {
+        onBlockingCall?.invoke(timeoutMs)
         // 在引擎线程上做阻塞等待必然拿不到回包（回包也要靠这个线程解析），
         // 而且会把引擎卡住一整个 timeout —— 直接拒绝，别让人白等 3 秒。
         // 先于 READY 判定：这是编程错误，不该被「未就绪→null」掩盖。

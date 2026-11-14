@@ -56,14 +56,15 @@ repositories {
     google()
 }
 dependencies {
-    implementation("io.github.slchy.glasses2grok:sdk:0.2.2")
-    implementation("io.github.slchy.glasses2grok:sdk-ktx:0.2.2") // Optional: Coroutines & Flow support
+    implementation("io.github.slchy.glasses2grok:sdk:0.2.3")
+    implementation("io.github.slchy.glasses2grok:sdk-ktx:0.2.3") // Optional: Coroutines & Flow support
 }
 ```
 
 ### Quick Start (Kotlin)
 
 ```kotlin
+import io.github.slchy.glasses2grok.core.query.QueryResult
 import io.github.slchy.glasses2grok.core.session.GlassesEvent
 import io.github.slchy.glasses2grok.sdk.GlassesSession
 
@@ -93,17 +94,28 @@ session.addListener { event ->
     }
 }
 
-// 4. Invoke high-level capability verbs
-session.capturePhoto() // Trigger photo capture
-session.syncTime()     // Synchronize glasses time
+// 4. Non-blocking family: enqueues and returns Queued immediately, safe on the main thread
+//    (results arrive as events)
+session.capturePhoto()        // Trigger capture; the JPEG arrives as GlassesEvent.Image
+session.syncTime()            // Synchronize glasses time
+session.requestWearStatus()   // Ask for one wear-status report → GlassesEvent.WearChanged
 
-// 5. Consume via Kotlin Flow (requires sdk-ktx)
+// 5. Blocking family: waits for the device reply (3 s by default, up to 8 s) — **background thread only**
+//    On the main thread these throw IllegalStateException (SessionOptions.threadGuards defaults to true).
+lifecycleScope.launch(Dispatchers.IO) {
+    when (val r = session.deviceInfo()) {
+        is QueryResult.Ok     -> println("Device info: ${r.value}")
+        is QueryResult.Failed -> println("Query failed: ${r.reason}")
+    }
+}
+
+// 6. Consume via Kotlin Flow (requires sdk-ktx)
 // lifecycleScope.launch {
 //     session.events().collect { event -> ... }
 //     session.audio().collect { chunk -> ... }
 // }
 
-// 6. Graceful shutdown
+// 7. Graceful shutdown
 session.close()
 ```
 

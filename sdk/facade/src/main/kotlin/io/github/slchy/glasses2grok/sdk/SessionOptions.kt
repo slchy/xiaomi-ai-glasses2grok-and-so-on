@@ -18,4 +18,12 @@ public data class SessionOptions(
     val tickMs: Long = GlassesOptions.TICK_MS,
     /** 诊断模式：额外发出 `Diagnostic` 事件（原始帧摘要，不含 payload）。 */
     val diagnostics: Boolean = false,
+    /**
+     * 主线程护栏：阻塞类接口（返回 `QueryResult` / `SettingWriteResult` 的查询与写设置，
+     * 以及 `closeAndWait()`）在 **Android 主线程**上被调用时直接抛 `IllegalStateException`。
+     *
+     * 默认开。这类调用最多等 8 s，主线程上占满 5 s 就是 ANR —— 当场抛异常比陪等一个
+     * 必到的 ANR 更容易定位。只有「明知会卡主线程也要跑」的临时调试才关掉。
+     */
+    val threadGuards: Boolean = true,
 )

@@ -7,6 +7,10 @@
 
 Third-party Bluetooth SPP protocol specification, Android SDK driver and cloud voice backend for Xiaomi AI Glasses (Model M2442G1): talk to any LLM as a custom voice assistant.
 
+> **Two repos**: this one is the device side (protocol, SDK, app). The cloud voice stack has
+> moved to [`dsh-pet-wearable`](https://github.com/slchy/dsh-pet-wearable).
+> They share no code — only the wire protocol.
+
 ---
 
 ## Technical Documentation & Specifications
@@ -17,8 +21,8 @@ Third-party Bluetooth SPP protocol specification, Android SDK driver and cloud v
 - **SDK Architecture**: See [docs/SDK-ARCHITECTURE.md](docs/SDK-ARCHITECTURE.md) (7-module decoupled architecture, lock-free concurrency model, lane backpressure, and state machine).
 - **Frame Reference Implementation (Python)**: Located at `python/a5a5.py`.
 - **Android SDK Source**: Located at `sdk/`.
-- **Self-hosted Cloud Voice Backend**: Located at `cloud/` (mSBC decode → endpointing → ASR → Agent → TTS, see below).
-- **Cloud Architecture**: see [docs/CLOUD-ARCHITECTURE.md](docs/CLOUD-ARCHITECTURE.md) (layering, concurrency model, state machines, error model, extension points).
+- **Self-hosted Cloud Voice Backend**: split into its own repo, [`dsh-pet-wearable`](https://github.com/slchy/dsh-pet-wearable) (mSBC decode → endpointing → ASR → Agent → TTS).
+- **Cloud Architecture**: see that repo's `docs/CLOUD-ARCHITECTURE.md` (layering, concurrency model, state machines, error model, extension points).
 
 ---
 
@@ -135,51 +139,40 @@ cd sdk
 
 ---
 
-## Cloud Voice Backend (optional)
+## Cloud Voice Backend (moved out)
 
-`sdk/` covers phone ↔ glasses; `cloud/` covers phone ↔ LLM. The phone forwards the glasses'
+`sdk/` covers phone ↔ glasses; the cloud covers phone ↔ LLM. The phone forwards the glasses'
 uplink mSBC **as-is**; the backend decodes it, endpoints the utterance, runs ASR → agent → TTS
 and streams PCM back to the phone:
 
-> Layering, concurrency model, state machines and the error model: see
-> [docs/CLOUD-ARCHITECTURE.md](docs/CLOUD-ARCHITECTURE.md).
-
 ```text
-glasses ──SPP──▶ phone (sdk/sample) ──TLS/TCP──▶ cloud/ ──▶ ASR ──▶ Agent ──▶ TTS
+glasses ──SPP──▶ phone (sdk/sample) ──TLS/TCP──▶ cloud ──▶ ASR ──▶ Agent ──▶ TTS
                                                    └─ raw archive / offline replay / debug control
 ```
+
+**The backend now lives in its own repo:
+[`dsh-pet-wearable`](https://github.com/slchy/dsh-pet-wearable).** This repo keeps only the
+device side (protocol, SDK, app). The two share no code — just the wire protocol above.
+
+Why split: the two lines change at completely different rates. The protocol line moves only when
+a new command is discovered; the voice line tweaks parameters daily.
+
+What moved:
 
 | Stage | Default | Pluggable |
 |---|---|---|
 | Uplink decode | `ffmpeg` (mSBC → PCM16 16 kHz) | — |
-| Endpointing | energy gate; optional SmartTurn / silero-vad (`models/`, download separately) | `SMART_TURN=0` to disable |
+| Endpointing | energy gate; optional SmartTurn / silero-vad | `SMART_TURN=0` to disable |
 | ASR | Aliyun realtime speech | `--stt canned`, or implement the `providers.ts` interface |
 | Agent | command-based agent (uses the `dsh` SDK session by default) | `--agent echo` / `--agent none` |
-| TTS | MiMo (chat-style style prompt; emotion tags switch the tone) | `--tts silent`, or implement `providers.ts` |
+| TTS | MiMo (emotion tags switch the tone) | `--tts silent`, or implement `providers.ts` |
 
-No device and no credentials are needed to exercise the whole loop:
+The whole loop runs with no device and no credentials (fake phone +
+`--stt canned --tts silent --agent echo`), and the pure-logic unit tests need no network —
+all of that is in the new repo. Layering, concurrency model, state machines and the error model
+live in that repo's `docs/CLOUD-ARCHITECTURE.md`.
 
-```bash
-cd cloud
-node src/main.ts --listen 8766 --stt canned --tts silent --agent echo   # terminal 1
-node tools/fake-phone.ts --port 8766 --sbc ../some-capture.sbc          # terminal 2 (fake phone)
-```
-
-- Requires **Node 22.6+** (runs `.ts` directly: add `--experimental-strip-types` on 22.x; on by default on 23+).
-- `ffmpeg` is the only mandatory external binary; `onnxruntime-node` is loaded only when silero-vad is enabled.
-- `--sbc` takes a short mSBC recording; without it the fake phone still connects but sends no audio.
-- To wire real models: `cp .env.example .env`, fill in the ASR/TTS credentials, and swap `--stt/--tts/--agent`.
-
-**No credentials are shipped**: `.env`, `tokens.txt` and self-signed certs are gitignored;
-the repo only carries the empty `.env.example` template.
-
-Pure-logic unit tests (no network, no credentials):
-
-```bash
-node --test tests/*.test.ts
-```
-
-License: `cloud/` is released under the [MIT License](LICENSES/MIT.txt).
+License: the cloud part is released under the [MIT License](LICENSES/MIT.txt).
 
 ---
 

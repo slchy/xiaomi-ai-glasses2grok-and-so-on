@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-14T12:36:37Z
+exported-at    2026-11-14T12:38:21Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符

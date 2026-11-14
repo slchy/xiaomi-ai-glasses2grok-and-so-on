@@ -1,7 +1,7 @@
 # 导出清单（由 scripts/ci/export_public.py 生成，勿手改）
 source-repo    private（私有开发树）
 source-commit  omitted（私有开发树；对账见导出日志）
-exported-at    2026-11-14T12:38:21Z
+exported-at    2026-11-14T12:50:15Z
 mock-token     00112233445566778899aabbccddeeff
 transforms
   - 敏感值：测试用握手 token 换成 mock，真机型号换成占位符
@@ -14,66 +14,7 @@ transforms
   - tests/golden/vectors.txt：用 mock token 重新生成
   - 云侧：部署地址 / 个人目录 / 内网网段换成占位；凭据、模型二进制、早期原型不导出
 files
-  cloud/.env.example                                                     a87a5c9674338b9b
-  cloud/.gitignore                                                       07a5ece9dc8fdc5b
-  cloud/mcp/camera.yml                                                   adafec541f319d95
-  cloud/mcp/mcp-camera.mjs                                               419353fb3c038572
-  cloud/mcp/mcp-session.mjs                                              cb2e8f99e21e0b98
-  cloud/models/README.md                                                 2cf3a159cd6b2696
-  cloud/package-lock.json                                                600bde36a00ac413
-  cloud/package.json                                                     10dc18d7ade5759f
-  cloud/README.md                                                        1576edfec43c8f62
-  cloud/scripts/aliyun-probe.mjs                                         59faa018576cd72f
-  cloud/scripts/latency-report.ts                                        be96c289ea5cde13
-  cloud/scripts/nls-check.mjs                                            2e74866133629803
-  cloud/scripts/push-sbc.mjs                                             6f352e21a1ef0078
-  cloud/smart_turn/server.py                                             633ca8512d69588b
-  cloud/smart_turn/whisper_features.py                                   139b047d10dee42a
-  cloud/src/agent.ts                                                     0ec896685972f2d3
-  cloud/src/aliyun-asr.ts                                                98d10a00d9072775
-  cloud/src/aliyun-session.ts                                            10266377d287e026
-  cloud/src/announce-store.ts                                            2755bb41fd11b039
-  cloud/src/archive.ts                                                   78ddc11023b27568
-  cloud/src/backchannel.ts                                               a17c56722d563ac7
-  cloud/src/calibrate.ts                                                 66d23144b2ead465
-  cloud/src/dialog-fsm.ts                                                e51629f218e9ebd4
-  cloud/src/emotion.ts                                                   813ee76bde6dca6f
-  cloud/src/energy-gate.ts                                               087f8651642060bf
-  cloud/src/frame.ts                                                     d397ab1abe758153
-  cloud/src/hq-intent.ts                                                 7d82d67f00a73f24
-  cloud/src/latency-report.ts                                            5ecfd17e3c31a00f
-  cloud/src/legacy-pipeline.ts                                           b8bc477257f60484
-  cloud/src/main.ts                                                      f9cb49629c04c985
-  cloud/src/mimo.ts                                                      a0ceaa328f902aff
-  cloud/src/pcm.ts                                                       ee6da048c6e3f35a
-  cloud/src/photo-inbox.ts                                               5021834473b7bd1b
-  cloud/src/providers.ts                                                 d5fc79e71f716adc
-  cloud/src/session-core.ts                                              6e2fea0c61ed6b1b
-  cloud/src/session.ts                                                   5db0eb126a657767
-  cloud/src/smart-turn.ts                                                ac050d565362a2d0
-  cloud/src/spontaneous.ts                                               ffd30b88e70869c8
-  cloud/src/tool-control.ts                                              44bd5212a2651450
-  cloud/src/transport.ts                                                 9abe62805d1fb69e
-  cloud/src/turn-runner.ts                                               8d1c0d76776532f3
-  cloud/src/uplink-pipeline.ts                                           7dd8ac66bcfb0d7e
-  cloud/src/util.ts                                                      dc32d761b5ac594c
-  cloud/src/utterance-assembler.ts                                       2737eae1fb3f97b6
-  cloud/src/vad.ts                                                       1fbd7a4ac9fa824b
-  cloud/src/wake-word.ts                                                 7ae9c673e3a1fdac
-  cloud/tests/announce-store.test.ts                                     a83670c1d0ccc610
-  cloud/tests/archive.test.ts                                            7200d9f42c309126
-  cloud/tests/backchannel-verify.ts                                      2f90196dd3980306
-  cloud/tests/emotion.test.ts                                            5cf092c0d19bdf5f
-  cloud/tests/fsm-verify.ts                                              a3504615bf4be08f
-  cloud/tests/hq-intent.test.ts                                          c053404bc389d73e
-  cloud/tests/latency-report.test.ts                                     5e3a4487eb55b543
-  cloud/tests/photo-await.test.ts                                        0758113cc06091d4
-  cloud/tests/prompt-boundary.test.ts                                    21441d57982e6714
-  cloud/tests/session-core.test.ts                                       c56fa1bbd37be5aa
-  cloud/tests/spontaneous.test.ts                                        a2a9bc51d21782f7
-  cloud/tools/fake-phone.ts                                              ac7d36aaac90669a
-  cloud/tsconfig.json                                                    fe13db2594418b66
-  docs/CLOUD-ARCHITECTURE.md                                             1a5dcee5e9d0b53b
+  cloud/README.md                                                        2c297bd7d3c5cb19
   sdk/.gitignore                                                         cf6a78c3a71b9328
   sdk/build.gradle.kts                                                   c3f8667075894276
   sdk/core/build.gradle.kts                                              141dae468006d1ed
@@ -228,6 +169,7 @@ hand-written
   docs/a5a5.en.md
   docs/a5a5.md
   docs/CAPABILITY-MATRIX.md
+  docs/CLOUD-ARCHITECTURE.md
   docs/FORMAL.en.md
   docs/FORMAL.md
   docs/SDK-ARCHITECTURE.md

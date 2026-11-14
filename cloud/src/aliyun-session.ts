@@ -291,6 +291,7 @@ class AliyunConnection {
       playbackTailMs: options.playbackTailMs,
       ttsGain: options.ttsGain,
       onDownlinkChunk: (chunk) => { this.archive?.downlink(chunk); },
+      onEvent: (name, fields) => { this.archive?.event(name, fields); },
       onTurnFinished: () => {
         this.execute(this.core.dispatch({ type: 'turnFinished' }));
         // 本轮结束，后台任务的播报可以接着放

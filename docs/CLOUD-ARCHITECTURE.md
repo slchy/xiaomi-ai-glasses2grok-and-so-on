@@ -127,6 +127,19 @@ drop            丢弃这句话（纯噪声）
 | `announce-store.ts` | 离线待补播队列（JSONL，上限 20） | **至少一次**：`drain()` 即取走，崩溃在播放中途会重播一句（重复比丢好） |
 | `tool-control.ts` | 本机 HTTP 控制口（`127.0.0.1`），给 MCP 工具进程回调 | 端口固定；`close()` 必须 `closeAllConnections()`，否则旧连接会继续占端口并把请求路由到已关闭的会话 |
 | `calibrate.ts` · `legacy-pipeline.ts` | 阈值标定脚本、旧的回放链路 | 调试用，不在生产路径上 |
+| `latency-report.ts` | **纯函数**：`events.jsonl` → 逐轮「用户说完 → 听到第一个字」分解（①判停+ASR / ②排队 / ③agent+TTS / ④播放） | 分段口径写在文件头；`null` 表示缺仪表而**不是 0**，且逐轮记下缺哪个时刻（`missing`）——缺 `tts.first` 多半是旧档案，缺 `gate.close` 多半是主动播报 |
+
+延迟分解依赖两个时间线事件：`turn-runner` 在拿到首块音频时写 `tts.first`，一轮收尾时写
+`turn.end`（失败也写，带 `failed: true`）。它们经 `TurnRunnerOptions.onEvent` 注入，
+`aliyun-session` 把它接到 `archive.event()` —— 传输层与 `TurnRunner` 都不认识档案。
+
+跑法：
+
+```bash
+cd cloud
+node scripts/latency-report.ts <会话目录>
+node scripts/latency-report.ts <档案根目录> --all
+```
 
 ---
 

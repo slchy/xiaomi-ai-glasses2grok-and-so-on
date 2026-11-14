@@ -108,6 +108,20 @@ public object VoiceCodec {
     private const val REQ_INFO_FIELD_TRANSACTION_ID = 2
     private const val REQ_INFO_FIELD_PAYLOAD = 3
 
+    // ---- id=10 下行（手机 → 眼镜）----
+    /**
+     * `Voice.f1` = `WakeUpEvent` —— **只有下行是这个字段号**。
+     *
+     * 上行（设备 → 手机）的 `id=10` 用 `f11`；混用会让设备**完全不响应**
+     * （`Voice` 类头注释、`参考协议`）。
+     */
+    private const val VOICE_FIELD_WAKE_UP = 1
+    private const val WAKE_UP_FIELD_REQUEST_INFO = 1
+    private const val WAKE_UP_FIELD_CMD = 2
+
+    /** 参考实现样本 `WakeUpEvent.f2 = 5`（实测）。 */
+    private const val WAKE_UP_CMD_DEFAULT = 5L
+
     // ---- id=5 下行 ----
     /** `Voice.f5`（tag `0x2A`）—— 由 `protobuf 消息类` 常量表确认，见 `参考协议`。 */
     private const val VOICE_FIELD_STATUS = 5
@@ -152,6 +166,44 @@ public object VoiceCodec {
 
         val voice = java.io.ByteArrayOutputStream()
         Pb.bytes(voice, VOICE_FIELD_MULTIMODAL, multiModel.toByteArray())
+        return voice.toByteArray()
+    }
+
+    /**
+     * 构造 `Voice id=10 WakeUpEvent` 的**内容**（手机 → 眼镜方向，不含 `WearPacket` 头）。
+     *
+     * 出处：`参考协议`「伴随帧」——参考实现在发 `Voice id=4` 拍照请求**之前**先发它：
+     *
+     * ```text
+     * ch=1 tx seq=34  Voice id=10  WakeUpEvent { f1{transactionId, requestId}, f2=5 }
+     * ```
+     *
+     * ⚠ **这是未验证能力。** 参考实现发它的上下文是"拍照前建立 Voice 会话"，
+     * 不等于"拉起语音助手"。发出去之后眼镜会不会开始语音采集，**没人测过**。
+     *
+     * 判定方式（见 `docs/` 的拉起实验）：发完观察
+     * - 有 `WAKEUP_VOICE_FIRST`(6) / `FOLLOW_VOICE`(2) 的 MASS 帧 → 拉起了
+     * - 只有 `Voice id=6` 错误、或彻底无反应 → 拉不起
+     *
+     * @param transactionId 会话事务 ID；的参考实现样本是 32 位十六进制
+     * @param requestId 可为 null（仍显式写 f1 空值，与 [buildMultiModel] 同规）
+     * @param cmd `WakeUpEvent.f2`，默认 5（参考实现样本值）
+     */
+    public fun buildWakeUp(
+        transactionId: String,
+        requestId: ByteArray? = null,
+        cmd: Long = WAKE_UP_CMD_DEFAULT,
+    ): ByteArray {
+        val reqInfo = java.io.ByteArrayOutputStream()
+        Pb.bytes(reqInfo, REQ_INFO_FIELD_REQUEST_ID, requestId ?: ByteArray(0))
+        Pb.string(reqInfo, REQ_INFO_FIELD_TRANSACTION_ID, transactionId)
+
+        val wakeUp = java.io.ByteArrayOutputStream()
+        Pb.bytes(wakeUp, WAKE_UP_FIELD_REQUEST_INFO, reqInfo.toByteArray())
+        Pb.uint(wakeUp, WAKE_UP_FIELD_CMD, cmd)
+
+        val voice = java.io.ByteArrayOutputStream()
+        Pb.bytes(voice, VOICE_FIELD_WAKE_UP, wakeUp.toByteArray())
         return voice.toByteArray()
     }
 

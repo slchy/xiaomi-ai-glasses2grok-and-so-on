@@ -41,6 +41,13 @@ export interface TurnRunnerOptions {
   readonly ttsGain?: number;
   /** 每块下行音频（AEC 分析落盘用） */
   readonly onDownlinkChunk?: (chunk: Buffer) => void;
+  /**
+   * 时间线事件（进会话档案）。
+   *
+   * `tts.first` 与 `turn.end` 是延迟复算必需的仪表：缺了它们，「用户说完 → 听到第一个字」
+   * 只散在 console 里，改动之后没法比快慢（见 `latency-report.ts`）。
+   */
+  readonly onEvent?: (name: string, fields?: Record<string, unknown>) => void;
   /** 一轮结束（落盘用），无论成功失败都会调用 */
   readonly onTurnFinished: () => void;
   readonly log: (line: string) => void;
@@ -158,6 +165,7 @@ export class TurnRunner {
           firstChunkAtMs = Date.now() - ttsStarted;
           fsm.audioStarted(ticket);
           this.log(`  TTS首块 ${(firstChunkAtMs / 1000).toFixed(2)} s`);
+          this.options.onEvent?.('tts.first', { ms: firstChunkAtMs });
         }
         audioBytes += chunk.length;
         this.options.onDownlinkChunk?.(chunk);
@@ -187,6 +195,13 @@ export class TurnRunner {
         interrupted = fsm.isStale(ticket);
       }
 
+      this.options.onEvent?.('turn.end', {
+        interrupted,
+        audio_s: Number(audioSeconds.toFixed(2)),
+        dsh_ms: agentLatencyMs,
+        tts_first_ms: firstChunkAtMs === 0 ? -1 : firstChunkAtMs,
+      });
+
       return {
         interrupted,
         audioBytes,
@@ -195,6 +210,8 @@ export class TurnRunner {
         agentLatencyMs,
       };
     } catch (error) {
+      // 失败也留一条：否则报告里这一轮的 ④ 会显示"缺仪表"，与"没拿到音频"混在一起
+      this.options.onEvent?.('turn.end', { failed: true, dsh_ms: agentLatencyMs });
       this.log(`  ✗ 本轮失败: ${(error as Error).message}`);
       return null;
     } finally {

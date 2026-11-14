@@ -266,6 +266,27 @@ public class SessionEngine(
         sendWearPacket(TYPE_SYSTEM, ID_GET_WEAR_STATUS, ByteArray(0)) == ErrorCode.NONE
 
     /**
+     * **尝试**让眼镜主动进入语音态：`Voice`(14) id=10 `WakeUpEvent`（手机 → 眼镜方向）。
+     *
+     * ⚠ **未验证能力，别在文档里当成已实现。** 已知的三条事实：
+     * - 参考实现在发 `Voice id=4` 拍照请求前会先发这一帧（实测），
+     *   但那个上下文是"建立 Voice 会话"，不是"唤醒语音助手"。
+     * - `Voice` id=5 的 `f1=2`（开始）与静态枚举冲突，已证伪不实现
+     *   （实测）。
+     * - 上行 `id=10` 用 `f11`，下行用 `f1`；写错方向设备**完全不响应**。
+     *
+     * @param transactionId 会话事务 ID，建议 32 位十六进制
+     * @param requestId 可为 null
+     * @returns 是否排进发送队列 —— **≠ 眼镜接受了**
+     */
+    public fun requestWakeUp(transactionId: String, requestId: ByteArray? = null): Boolean =
+        sendWearPacket(
+            io.github.slchy.glasses2grok.core.voice.VoiceIds.TYPE,
+            GlassesProtocol.Voice.ID_WAKE,
+            io.github.slchy.glasses2grok.core.voice.VoiceCodec.buildWakeUp(transactionId, requestId),
+        ) == ErrorCode.NONE
+
+    /**
      * 基础状态上报：`System id=80 ReportData`，载荷是**空的** `System{}`（参考实现同款）。
      *
      * 回包 `System.f51 = ReportData.Result{type, status}`；参考实现每 1 小时自动发一次

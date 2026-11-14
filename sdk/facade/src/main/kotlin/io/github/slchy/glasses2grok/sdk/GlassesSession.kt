@@ -294,6 +294,22 @@ public class GlassesSession internal constructor(
     public fun requestWearStatus(): SendResult = sendWearInternal(2, 93, ByteArray(0))
 
     /**
+     * **尝试**让眼镜主动进入语音态：`Voice`(14) id=10 `WakeUpEvent`（手机 → 眼镜）。
+     *
+     * ⚠ **未验证**：参考实现只在拍照前发过这一帧，不证明它能拉起语音助手。
+     * 判定方式见 `SessionEngine.requestWakeUp` 的注释与 `docs/` 的拉起实验。
+     *
+     * @param transactionId 会话事务 ID，建议 32 位十六进制
+     * @param requestId 可为 null
+     */
+    public fun requestWakeUp(transactionId: String, requestId: ByteArray? = null): SendResult =
+        sendWearInternal(
+            14,
+            10,
+            io.github.slchy.glasses2grok.core.voice.VoiceCodec.buildWakeUp(transactionId, requestId),
+        )
+
+    /**
      * 同步时间到眼镜：`System`(2) `SetSystemTime`(3)。
      *
      * 参考实现 **每次连接都发**（固件日志 539 次），且 `needResponse = false` ——

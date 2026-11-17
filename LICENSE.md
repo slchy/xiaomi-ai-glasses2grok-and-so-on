@@ -22,7 +22,7 @@
 
 1. **非官方声明**：本项目为独立研究者的第三方开源成果，**与小米科技（Xiaomi）或蜂巢科技（Superhexa）无任何附属、赞助或认可关系**。
 2. **商标权属**：所有提及的商标名称（如 "小米"、"Mijia"、"Superhexa" 等）版权均归其各自所有者所有，在此仅用于客观技术兼容性说明。
-3. **凭据自备（BYOD 原则）**：本 SDK 仅提供纯粹的传输链路与通信状态机，不提供、不代取、不保存任何硬件访问凭据（Token）。使用本项目的研究者须自行确保对所连接的硬件设备拥有合法的所有权与操作权限。
+3. **凭据自备（BYOD 原则）**：本 SDK 仅提供纯粹的传输链路与通信状态机，**不内置分发、不经由第三方服务器中转代取、不在云端保存**任何硬件访问凭据（Token）。运行所需的通信凭据须由用户基于自身合法资产提供（支持纯离线手动配置，或在用户端侧本地直接向设备所属品牌方的鉴权接口发起只读查询）。使用本项目的研究者须自行确保对所连接的硬件设备拥有合法的所有权与操作权限。
 4. **无担保**：在适用法律允许的最大范围内，本项目按“现有状态（AS-IS）”提供，不提供任何明示或暗示的担保，作者不对因使用本项目导致的硬件损坏、数据丢失或法律纠纷承担责任。
 
 ---
@@ -45,5 +45,5 @@ This project adopts a tiered multi-licensing architecture to keep protocol speci
 
 1. **Non-Affiliation**: This is an independent open-source research initiative and is **not affiliated with, endorsed by, or sponsored by Xiaomi Inc. or Superhexa Technology**.
 2. **Trademarks**: All brand and product names mentioned (including "Xiaomi", "Mijia", "Superhexa") are trademarks or registered trademarks of their respective owners, used here solely for technical compatibility identification.
-3. **BYOD (Bring Your Own Device / Token)**: This SDK functions strictly as a communication transport driver. It does not extract, generate, or store device access credentials (Tokens). Researchers must ensure they possess lawful ownership and authorization for the target hardware.
+3. **BYOD (Bring Your Own Device / Token)**: This SDK functions strictly as a communication transport driver. It does **not bundle or distribute device access credentials (Tokens), does not relay or obtain them on your behalf through any third-party server, and does not store them in the cloud**. The credentials required to run must be supplied by the user from their own lawfully owned assets — either configured manually and fully offline, or retrieved by a read-only query issued locally on the user's own device directly against the device vendor's authentication endpoint. Researchers must ensure they possess lawful ownership and authorization for the target hardware.
 4. **No Warranty**: To the maximum extent permitted by applicable law, this project is provided "AS-IS" without warranty of any kind. The authors disclaim all liabilities for any damages, hardware malfunctions, or legal claims arising from use of this software.

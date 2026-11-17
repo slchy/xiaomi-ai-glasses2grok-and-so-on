@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/banner.jpg" alt="mi Moe" width="100%">
+</p>
+
 # xiaomi-ai-glasses2grok-and-so-on
 
 [中文](README.md)<br>
@@ -10,6 +14,31 @@ Third-party Bluetooth SPP protocol specification, Android SDK driver and cloud v
 > **Two repos**: this one is the device side (protocol, SDK, app). The cloud voice stack has
 > moved to [`dsh-pet-wearable`](https://github.com/slchy/dsh-pet-wearable).
 > They share no code — only the wire protocol.
+
+---
+
+## App Screenshots
+
+> 🚧 **In testing — will be released soon**
+
+Real-device screenshots of the sample app `sdk/sample/` (package `st.moe.mimoe`). Sensitive fields (Bluetooth MAC, tokens, server address, certificate) and personal photos in the gallery are redacted.
+
+<table>
+  <tr>
+    <td align="center" width="20%"><img src="docs/assets/screenshot-home.jpg" alt="Companion" width="180"></td>
+    <td align="center" width="20%"><img src="docs/assets/screenshot-live.jpg" alt="Live" width="180"></td>
+    <td align="center" width="20%"><img src="docs/assets/screenshot-gallery.jpg" alt="Gallery" width="180"></td>
+    <td align="center" width="20%"><img src="docs/assets/screenshot-settings.jpg" alt="Settings" width="180"></td>
+    <td align="center" width="20%"><img src="docs/assets/screenshot-probe.jpg" alt="Probe" width="180"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Companion</b><br><sub>Connection status and one-tap connect</sub></td>
+    <td align="center"><b>Live</b><br><sub>First-person RTMP streaming with resolution and frame-rate options</sub></td>
+    <td align="center"><b>Gallery</b><br><sub>High-speed photo, video and audio sync over Wi-Fi Direct</sub></td>
+    <td align="center"><b>Settings</b><br><sub>Pairing credentials and the cloud voice channel (TLS)</sub></td>
+    <td align="center"><b>Probe</b><br><sub>Protocol probe panel: voice, gesture, gallery and network commands</sub></td>
+  </tr>
+</table>
 
 ---
 
@@ -38,7 +67,7 @@ The SDK adopts a strict unidirectional layered architecture across 7 decoupled m
 | `:transport` | Android | Internal implementation | Bluetooth SPP socket I/O, pump threads, and broadcast listeners |
 | `:facade` | Android | `io.github.slchy.glasses2grok:sdk` | **Main public AAR**: Exposes `GlassesSession` and high-level verbs |
 | `:ktx` | Android | `io.github.slchy.glasses2grok:sdk-ktx` | **Optional Coroutines AAR**: Exposes `Flow<GlassesEvent>` and suspend utilities |
-| `:sample` | Android | Demo app | One-page dashboard (connect / handshake / status / diagnostics / log copy) plus a protocol probe panel |
+| `:sample` | Android | Demo app (`st.moe.mimoe`) | Four-tab app (Companion / Live / Gallery / Settings) plus a protocol probe panel (see screenshots above) |
 
 ### Gradle Dependency
 
@@ -209,4 +238,4 @@ This project is licensed under a tiered multi-license structure. For details, se
 
 1. This project is an independent third-party open-source research initiative and is **not affiliated with, endorsed by, or sponsored by Xiaomi or Superhexa**.
 2. All product names, trademarks, and registered trademarks mentioned are property of their respective owners and are used here solely for technical compatibility identification.
-3. This project does not provide, extract, or store any device access credentials (Tokens). Users must ensure they have legal ownership and authorization for the connected hardware.
+3. This project does **not bundle or distribute any device access credentials (Tokens), does not relay or obtain them on your behalf through any third-party server, and does not store them in the cloud**. The communication credentials required to run must be supplied by the user from their own lawfully owned assets — either configured manually and fully offline, or retrieved by a read-only query issued locally on the user's own device directly against the device vendor's authentication endpoint. Users must ensure they have legal ownership and authorization for the connected hardware.

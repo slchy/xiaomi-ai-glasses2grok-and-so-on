@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/banner.jpg" alt="mi Moe" width="100%">
+</p>
+
 # xiaomi-ai-glasses2grok-and-so-on
 
 **Third-party Bluetooth protocol analysis, Android SDK and cloud voice backend for the Xiaomi AI Glasses (M2442G1): talk to any LLM.**
@@ -12,6 +16,31 @@
 > **双仓**：本仓是设备侧（协议、SDK、App）；云端语音栈已拆到
 > [`dsh-pet-wearable`](https://github.com/slchy/dsh-pet-wearable)。
 > 两边零代码依赖，只通过线协议通信。
+
+---
+
+## App 截图
+
+> 🚧 **测试中，即将发布**
+
+示例应用 `sdk/sample/`（包名 `st.moe.mimoe`）的实机截图。敏感字段（蓝牙 MAC、Token、服务器地址、证书）和相册里的私人照片已打码。
+
+<table>
+  <tr>
+    <td align="center" width="20%"><img src="docs/assets/screenshot-home.jpg" alt="伴随" width="180"></td>
+    <td align="center" width="20%"><img src="docs/assets/screenshot-live.jpg" alt="直播" width="180"></td>
+    <td align="center" width="20%"><img src="docs/assets/screenshot-gallery.jpg" alt="相册" width="180"></td>
+    <td align="center" width="20%"><img src="docs/assets/screenshot-settings.jpg" alt="设置" width="180"></td>
+    <td align="center" width="20%"><img src="docs/assets/screenshot-probe.jpg" alt="探针" width="180"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>伴随</b><br><sub>连接状态与一键连接</sub></td>
+    <td align="center"><b>直播</b><br><sub>第一人称 RTMP 推流，可调清晰度与帧率</sub></td>
+    <td align="center"><b>相册</b><br><sub>Wi-Fi Direct 高速同步照片、录像与录音</sub></td>
+    <td align="center"><b>设置</b><br><sub>配对凭据与云端语音通道（TLS）</sub></td>
+    <td align="center"><b>探针</b><br><sub>协议探针面板：语音 / 手势 / 相册 / 网络命令调试</sub></td>
+  </tr>
+</table>
 
 ---
 
@@ -40,7 +69,7 @@ SDK 采用严格的分层单向依赖架构，划分为 7 个模块：
 | `:transport` | Android | 内部实现 | 蓝牙 SPP Socket I/O、后台泵线程与系统广播监听 |
 | `:facade` | Android | `io.github.slchy.glasses2grok:sdk` | **主对外门面 AAR**：导出 `GlassesSession` 与高层 API |
 | `:ktx` | Android | `io.github.slchy.glasses2grok:sdk-ktx` | **可选协程扩展 AAR**：提供 `Flow<GlassesEvent>` 与挂起扩展 |
-| `:sample` | Android | 演示应用 | 单页仪表盘（连接 / 握手 / 状态 / 诊断 + 日志复制）与协议探针面板 |
+| `:sample` | Android | 演示应用（`st.moe.mimoe`） | 伴随 / 直播 / 相册 / 设置四页 App 与协议探针面板（见上方截图） |
 
 ### 快速接入 (Gradle)
 
@@ -206,4 +235,4 @@ frames, bad_crc, resync, dropped = parse(frame)
 
 1. 本项目为独立研究者的第三方开源成果，**与小米科技（Xiaomi）或蜂巢科技（Superhexa）无任何附属、赞助或认可关系**。
 2. 所有提及的产品名称与商标版权均归原厂商所有，在此仅用于客观技术兼容性说明。
-3. 本项目不提供、不代取、不保存任何硬件访问凭据（Token），使用本项目的研究者须自行确保对所连接的硬件拥有合法的所有权与操作权限。
+3. 本项目**不内置分发、不经由第三方服务器中转代取、不在云端保存**任何硬件访问凭据（Token）。运行所需的通信凭据须由用户基于自身合法资产提供（支持纯离线手动配置，或在用户端侧本地直接向设备所属品牌方的鉴权接口发起只读查询）。使用本项目的研究者须自行确保对所连接的硬件拥有合法的所有权与操作权限。

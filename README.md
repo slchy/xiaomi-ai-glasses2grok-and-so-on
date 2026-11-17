@@ -4,8 +4,6 @@
 
 # xiaomi-ai-glasses2grok-and-so-on
 
-> 🚧 **测试中，即将发布**
-
 **Third-party Bluetooth protocol analysis, Android SDK and cloud voice backend for the Xiaomi AI Glasses (M2442G1): talk to any LLM.**
 
 [English](README.en.md)<br>
@@ -22,6 +20,8 @@
 ---
 
 ## App 截图
+
+> 🚧 **测试中，即将发布**
 
 示例应用 `sdk/sample/`（包名 `st.moe.mimoe`）的实机截图。敏感字段（蓝牙 MAC、Token、服务器地址、证书）和相册里的私人照片已打码。
 

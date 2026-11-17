@@ -4,6 +4,8 @@
 
 # xiaomi-ai-glasses2grok-and-so-on
 
+> 🚧 **In testing — will be released soon**
+
 [中文](README.md)<br>
 [Demo](https://www.bilibili.com/video/BV1jn456gEeQ/)
 
@@ -18,8 +20,6 @@ Third-party Bluetooth SPP protocol specification, Android SDK driver and cloud v
 ---
 
 ## App Screenshots
-
-> 🚧 **In testing — will be released soon**
 
 Real-device screenshots of the sample app `sdk/sample/` (package `st.moe.mimoe`). Sensitive fields (Bluetooth MAC, tokens, server address, certificate) and personal photos in the gallery are redacted.
 
